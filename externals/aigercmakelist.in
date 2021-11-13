@@ -1,0 +1,25 @@
+# Enforce some CMake policies
+cmake_minimum_required(VERSION 3.4)
+if(CMAKE_VERSION VERSION_GREATER "3.13.0")
+cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0077 NEW)
+endif()
+project(aiger VERSION 1.9.4 LANGUAGES C)
+
+add_library(aiger
+STATIC
+    aigtoaig.c
+    aiger.c
+)
+set_target_properties(aiger PROPERTIES LINKER_LANGUAGE C)
+
+add_executable(aigtoaig
+  aigtoaig.c)
+
+target_include_directories(aigtoaig PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(aigtoaig aiger)
+set_target_properties(aigtoaig PROPERTIES LINKER_LANGUAGE C)
+
+install(TARGETS aigtoaig
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)

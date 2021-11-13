@@ -634,3 +634,13 @@ if (Z3_BUILD_DOCUMENTATION)
 else()
   message(STATUS "Building documentation disabled")
 endif()
+
+################################################################################
+# AIG Externals
+################################################################################
+cmake_dependent_option(Z3_ENABLE_AIG_EXTERNAL_TARGETS 
+    "Build Z3 with AIG externals(aiger and abc)" ON
+    "CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
+if (Z3_ENABLE_AIG_EXTERNAL_TARGETS)
+  add_subdirectory(externals)
+endif()
