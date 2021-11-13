@@ -76,6 +76,8 @@ public:
         m_aig_manager->max_sharing(r);
         expr_ref new_f(g->m());
         m_aig_manager->to_formula(r, new_f);
+        m_aig_manager->display(std::cout, r);
+        m_aig_manager->display_aag(std::cout, r);
         expr_dependency *ed = g->dep(i);
         g->update(i, new_f, nullptr, ed);
       }
@@ -85,6 +87,7 @@ public:
       g->reset(); // save memory
       m_aig_manager->max_sharing(r);
       m_aig_manager->to_formula(r, *(g.get()));
+      m_aig_manager->display(std::cout, r);
     }
   }
 

@@ -19,10 +19,12 @@ Notes:
 #include "tactic/aig/aig.h"
 #include "ast/ast_smt2_pp.h"
 #include "tactic/goal.h"
+#include "util/map.h"
 
 #define USE_TWO_LEVEL_RULES
 #define FIRST_NODE_ID (UINT_MAX / 2)
 
+// AIG declare here:
 struct aig;
 
 class aig_lit {
@@ -64,9 +66,10 @@ public:
 
 aig_lit aig_lit::null;
 
+// AIG define here:
 struct aig {
   unsigned m_id;
-  unsigned m_ref_count;
+  unsigned m_ref_count; // get reference count
   aig_lit m_children[2];
   unsigned m_mark : 1;
   aig() {}
@@ -141,6 +144,19 @@ struct aig_manager::imp {
   aig_lit m_false;
   bool m_default_gate_encoding;
   unsigned long long m_max_memory;
+  /* aag data structure begin */
+  typedef ptr_addr_map<aig_lit const,unsigned> aigmap_t;
+  typedef u_map<aig_lit const *> aigmap_rev_t;
+  aigmap_t m_aig_map;
+  aigmap_rev_t m_rev_aig_map;
+  unsigned int m_input_num;
+  unsigned int m_output_num;
+  unsigned int m_gate_num;
+  unsigned int m_max_input_var;
+  unsigned int m_max_used_id;
+  std::string inputs;
+  std::string output;
+  /* aag data structure end */
 
   void dec_ref_core(aig *n) {
     SASSERT(n->m_ref_count > 0);
@@ -149,20 +165,25 @@ struct aig_manager::imp {
       m_to_delete.push_back(n);
   }
 
-  void checkpoint() {
+  void dec_ref_core(aig_lit const &r) { // overload
+    dec_ref_core(r.ptr());
+  }
+
+  void checkpoint() { // check memory usage
     if (memory::get_allocation_size() > m_max_memory)
       throw aig_exception(TACTIC_MAX_MEMORY_MSG);
     if (!m().inc())
       throw aig_exception(m().limit().get_cancel_msg());
   }
 
-  void dec_ref_core(aig_lit const &r) { dec_ref_core(r.ptr()); }
-
   void dec_ref_result(aig *n) {
     SASSERT(n->m_ref_count > 0);
     n->m_ref_count--;
   }
-  void dec_ref_result(aig_lit const &r) { dec_ref_result(r.ptr()); }
+
+  void dec_ref_result(aig_lit const &r) {
+    dec_ref_result(r.ptr());
+  }
 
   void process_to_delete() {
     while (!m_to_delete.empty()) {
@@ -189,7 +210,7 @@ struct aig_manager::imp {
     m_allocator.deallocate(sizeof(aig), n);
   }
 
-  aig *allocate_node() {
+  aig *allocate_node() { // create a aig node
     return static_cast<aig *>(m_allocator.allocate(sizeof(aig)));
   }
 
@@ -199,7 +220,7 @@ struct aig_manager::imp {
     r->m_id = m_var_id_gen.mk();
     r->m_ref_count = 0;
     r->m_mark = false;
-    r->m_children[0] = aig_lit();
+    r->m_children[0] = aig_lit(); // only one child for variable
     SASSERT(r->m_id <= m_var2exprs.size());
     if (r->m_id == m_var2exprs.size())
       m_var2exprs.push_back(t);
@@ -1376,7 +1397,8 @@ struct aig_manager::imp {
 public:
   imp(ast_manager &m, unsigned long long max_memory, bool default_gate_encoding)
       : m_var_id_gen(0), m_node_id_gen(FIRST_NODE_ID), m_num_aigs(0),
-        m_var2exprs(m), m_allocator("aig"), m_true(mk_var(m.mk_true())) {
+        m_var2exprs(m), m_allocator("aig"), m_true(mk_var(m.mk_true())),
+        m_aig_map(aigmap_t()), m_rev_aig_map(aigmap_rev_t()) {
     SASSERT(is_true(m_true));
     m_false = m_true;
     m_false.invert();
@@ -1384,6 +1406,13 @@ public:
     inc_ref(m_false);
     m_max_memory = max_memory;
     m_default_gate_encoding = default_gate_encoding;
+    m_max_input_var = 2;
+    m_max_used_id = 2;
+    m_input_num = 0;
+    m_output_num = 0;
+    m_gate_num = 0;
+    inputs = "";
+    output = "";
   }
 
   ~imp() {
@@ -1664,6 +1693,128 @@ public:
       out << ")";
   }
 
+  unsigned int compute_idx(unsigned int i) const {
+    return i / 2 - 1;
+  }
+
+  void display_symbol(std::ostream &out, aig_lit const &r) const {
+    aig *n = r.ptr();
+    SASSERT(is_var(n));
+    out << "i" << compute_idx(m_aig_map[&r]) << " " << mk_ismt2_pp(m_var2exprs[n->m_id], m()) << "\n";
+  }
+
+  void update_aig_map(aig_lit const &r, bool is_output) {
+      if (m_aig_map.contains(&r)) {
+        return;
+      }
+      if (is_var(r.ptr())) {
+        inputs += std::to_string(m_max_used_id);
+        inputs += "\n";
+        m_max_input_var += 2;
+      }
+      if (is_output) {
+        if (r.is_inverted())
+          output = std::to_string(m_max_used_id + 1);
+        else 
+          output = std::to_string(m_max_used_id);
+      }
+      m_aig_map.insert(&r, m_max_used_id);
+      m_rev_aig_map.insert(m_max_used_id, &r);
+      m_max_used_id += 2;
+  }
+
+  void display_node(std::ostream &out, aig_lit const &r) const {
+    if (r.is_inverted()) { // aig used odd number to represent negation
+      out << (m_aig_map[&r] + 1);
+    }
+    else {
+      out << m_aig_map[&r];
+    }
+  }
+
+  void display_gate(std::ostream &out, aig_lit const &r, aig_lit const &r1, 
+      aig_lit const &r2) const {
+    SASSERT(!is_var(r.ptr()));
+    out << m_aig_map[&r]; // output must be even number
+    out << " ";
+    display_node(out, r1);
+    out << " ";
+    display_node(out, r2);
+    out << "\n";
+  }
+
+  // construct map and assign number to variables or gates
+  void iterate(aig_lit const &r) {
+    m_output_num ++;
+    ptr_vector<const aig_lit> queue;
+    ptr_vector<const aig_lit> gate_queue;
+    unsigned qhead = 0;
+    queue.push_back(&r);
+    while (qhead < queue.size()) {
+      const aig_lit *r_ptr = queue[qhead];
+      qhead++;
+      if (is_var(*r_ptr)) {
+        m_input_num ++;
+        update_aig_map(*r_ptr, false);
+        continue;
+      } else {
+        m_gate_num ++;
+        const aig_lit *ptr1 = &r_ptr->ptr()->m_children[0];
+        const aig_lit *ptr2 = &r_ptr->ptr()->m_children[1];
+        queue.push_back(ptr1);
+        queue.push_back(ptr2);
+        gate_queue.push_back(r_ptr);
+      }
+    }
+    update_aig_map(r, true);
+    qhead = 0;
+    while (qhead < gate_queue.size() ) {
+      const aig_lit *r_ptr = gate_queue[qhead];
+      qhead++;
+      update_aig_map(*r_ptr, false);
+    }
+  }
+
+  void display_aag(std::ostream &out, aig_lit const &r) {
+    iterate(r);
+    out << "aag " << m_max_input_var - 1 << " " << m_input_num << " 0 "
+     << m_output_num << " " << m_gate_num <<"\n";
+    out << inputs;
+    out << output << "\n";
+    ptr_vector<const aig_lit> queue;
+    ptr_vector<const aig_lit> symbol_queue;
+    unsigned qhead = 0;
+    queue.push_back(&r);
+    while (qhead < queue.size()) {
+      const aig_lit *r_ptr = queue[qhead];
+      qhead++;
+      if (is_var(r_ptr->ptr())) { // var
+        symbol_queue.push_back(r_ptr);
+      } else { // gate
+        const aig_lit *ptr1 = &r_ptr->ptr()->m_children[0];
+        const aig_lit *ptr2 = &r_ptr->ptr()->m_children[1];
+        display_gate(out, *r_ptr, *ptr1, *ptr2);
+        aig *c1 = ptr1->ptr();
+        aig *c2 = ptr2->ptr();
+        if (!c1->m_mark) {
+          c1->m_mark = true;
+          queue.push_back(ptr1);
+        }
+        if (!c2->m_mark) {
+          c2->m_mark = true;
+          queue.push_back(ptr2);
+        }
+      }
+    }
+    qhead = 0;
+    while (qhead < symbol_queue.size() ) {
+      const aig_lit *r_ptr = symbol_queue[qhead];
+      qhead++;
+      display_symbol(out, *r_ptr);
+    }
+    out << "\n";
+  }
+
   void display_smt2(std::ostream &out, aig_lit const &r) const {
     ptr_vector<aig> to_unmark;
     ptr_vector<aig> todo;
@@ -1798,3 +1949,7 @@ void aig_manager::display_smt2(std::ostream &out, aig_ref const &r) const {
 }
 
 unsigned aig_manager::get_num_aigs() const { return m_imp->get_num_aigs(); }
+
+void aig_manager::display_aag(std::ostream &out, aig_ref const &r) {
+  m_imp->display_aag(out, aig_lit(r));
+}

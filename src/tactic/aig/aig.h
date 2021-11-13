@@ -74,5 +74,6 @@ public:
   void to_formula(aig_ref const &r, goal &result);
   void display(std::ostream &out, aig_ref const &r) const;
   void display_smt2(std::ostream &out, aig_ref const &r) const;
+  void display_aag(std::ostream &out, aig_ref const &r);
   unsigned get_num_aigs() const;
 };
