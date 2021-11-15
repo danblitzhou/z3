@@ -17,6 +17,7 @@ Notes:
 
 --*/
 #include "tactic/aig/aig.h"
+#include "tactic/tactic_params.hpp"
 #include "tactic/tactical.h"
 
 class aig_manager;
@@ -25,6 +26,7 @@ class aig_tactic : public tactic {
   unsigned long long m_max_memory;
   bool m_aig_gate_encoding;
   bool m_aig_per_assertion;
+  std::string m_aig_dump_to_file;
   aig_manager *m_aig_manager;
 
   struct mk_aig_manager {
@@ -52,23 +54,30 @@ public:
     t->m_max_memory = m_max_memory;
     t->m_aig_gate_encoding = m_aig_gate_encoding;
     t->m_aig_per_assertion = m_aig_per_assertion;
+    t->m_aig_dump_to_file = m_aig_dump_to_file;
     return t;
   }
 
   void updt_params(params_ref const &p) override {
+    tactic_params tp(p);
     m_max_memory = megabytes_to_bytes(p.get_uint("max_memory", UINT_MAX));
     m_aig_gate_encoding = p.get_bool("aig_default_gate_encoding", true);
-    m_aig_per_assertion = p.get_bool("aig_per_assertion", true);
+    m_aig_per_assertion =
+        p.get_bool("aig_per_assertion", tp.aig_per_assertion());
+    m_aig_dump_to_file = p.get_str("aig_dump_to_file", tp.aig_dump_to_file());
   }
 
   void collect_param_descrs(param_descrs &r) override {
     insert_max_memory(r);
-    r.insert("aig_per_assertion", CPK_BOOL,
+    r.insert("per_assertion", CPK_BOOL,
              "(default: true) process one assertion at a time.");
+    r.insert("dump_to_file", CPK_STRING,
+             "(default: \"\") write aig (aiger format) into a file.");
   }
 
   void operator()(goal_ref const &g) {
-
+    // run aag: 
+    // ./z3 tactic.default_tactic=aig tactic.aig.per_assertion=false tactic.aig.dump_to_file=<out>.aag
     mk_aig_manager mk(*this, g->m());
     if (m_aig_per_assertion) {
       for (unsigned i = 0; i < g->size(); i++) {
@@ -76,6 +85,15 @@ public:
         m_aig_manager->max_sharing(r);
         expr_ref new_f(g->m());
         m_aig_manager->to_formula(r, new_f);
+        // m_aig_manager->display(std::cout, r);
+        if (!m_aig_dump_to_file.empty()) {
+          std::ofstream file(m_aig_dump_to_file);
+          m_aig_manager->display_aag(file, r);
+        }
+        else {
+          m_aig_manager->display_aag(std::cout, r);
+        }
+        m_aig_manager->reset_aag_info();
         expr_dependency *ed = g->dep(i);
         g->update(i, new_f, nullptr, ed);
       }
@@ -85,6 +103,14 @@ public:
       g->reset(); // save memory
       m_aig_manager->max_sharing(r);
       m_aig_manager->to_formula(r, *(g.get()));
+      // m_aig_manager->display(std::cout, r);
+      if (!m_aig_dump_to_file.empty()) {
+          std::ofstream file(m_aig_dump_to_file);
+          m_aig_manager->display_aag(file, r);
+      }
+      else {
+          m_aig_manager->display_aag(std::cout, r);
+      }
     }
   }
 
