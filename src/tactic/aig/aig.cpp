@@ -1700,8 +1700,12 @@ public:
   void display_symbol(std::ostream &out, aig_lit const &r) const {
     aig *n = r.ptr();
     SASSERT(is_var(n));
-    out << "i" << compute_idx(m_aig_map[n->m_id]) << " "
-        << mk_ismt2_pp(m_var2exprs[n->m_id], m()) << "\n";
+    std::ostringstream str;
+    str << mk_ismt2_pp(m_var2exprs[n->m_id], m());
+    std::string converted = str.str();
+    converted.erase(std::remove(converted.begin(), converted.end(), '\n'),
+                    converted.end());
+    out << "i" << compute_idx(m_aig_map[n->m_id]) << " " << converted << "\n";
   }
 
   void update_aig_map(aig_lit const &r, bool is_output) {
