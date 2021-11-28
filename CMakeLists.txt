@@ -644,3 +644,11 @@ cmake_dependent_option(Z3_ENABLE_AIG_EXTERNAL_TARGETS
 if (Z3_ENABLE_AIG_EXTERNAL_TARGETS)
   add_subdirectory(externals)
 endif()
+
+find_package(Abc)
+if (ABC_FOUND)
+  include_directories(${ABC_INCLUDE_DIR})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ABC_CXXFLAGS}")
+else()
+  set(ABC_LIBRARY "")
+endif ()
