@@ -315,13 +315,18 @@ list(APPEND Z3_DEPENDENT_LIBS Threads::Threads)
 ################################################################################
 # ABC library
 ################################################################################
+unset(ABC_LIBRARY)
 find_package(Abc)
 if (ABC_FOUND)
   include_directories(${ABC_INCLUDE_DIR})
-  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ABC_CXXFLAGS}")
   list(APPEND Z3_COMPONENT_CXX_FLAGS ${ABC_CXXFLAGS})
   list(APPEND Z3_DEPENDENT_LIBS ${ABC_LIBRARY})
   list(APPEND Z3_COMPONENT_CXX_DEFINES "-DABC_FOUND")
+
+  # -lreadline
+  list(APPEND Z3_DEPENDENT_LIBS "readline")
+  # -ldl
+  list(APPEND Z3_DEPENDENT_LIBS ${CMAKE_DL_LIBS})
 else()
   set(ABC_LIBRARY "")
 endif ()
@@ -656,5 +661,10 @@ cmake_dependent_option(Z3_ENABLE_AIG_EXTERNAL_TARGETS
     "Build Z3 with AIG externals(aiger and abc)" ON
     "CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
 if (Z3_ENABLE_AIG_EXTERNAL_TARGETS)
+  configure_file(
+    "${PROJECT_SOURCE_DIR}/externals/aigercmakelist.in"
+    "${PROJECT_SOURCE_DIR}/externals/aiger/CMakeLists.txt"
+    @ONLY
+  )
   add_subdirectory(externals)
 endif()
