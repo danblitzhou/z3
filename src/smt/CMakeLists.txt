@@ -1,3 +1,6 @@
+if(ABC_FOUND)
+  set(ABC_SOURCES abc.cpp)
+endif()
 z3_add_component(smt
   SOURCES
     arith_eq_adapter.cpp
@@ -75,6 +78,7 @@ z3_add_component(smt
     user_propagator.cpp
     uses_theory.cpp
     watch_list.cpp
+    ${ABC_SOURCES}
   COMPONENT_DEPENDENCIES
     solver_assertions
     bit_blaster
