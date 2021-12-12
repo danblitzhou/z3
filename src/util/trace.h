@@ -75,7 +75,9 @@ static inline void open_trace() {}
 static inline void finalize_trace() {}
 #endif
 
-#define TRACEH(TAG)  tout << "-------- [" << TAG << "] " << __FUNCTION__ << " " << __FILE__ << ":" << __LINE__ << " ---------\n"
+#define TRACEH(TAG)                                                            \
+  tout << "> [" << TAG << "] " << __FUNCTION__ << " " << __FILE__ << ":"       \
+       << __LINE__ << "\n"
 #define TRACEEND tout << "------------------------------------------------\n"
 #define TRACEBODY(TAG, CODE) TRACEH(TAG); CODE; TRACEEND; tout.flush()
 #define STRACEBODY(CODE) CODE; tout.flush()

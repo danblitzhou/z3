@@ -4,7 +4,7 @@ if (ABC_ROOT STREQUAL "")
   message("Using default Abc library under externals/")
   set(ABC_ROOT ${PROJECT_SOURCE_DIR}/externals/abc CACHE PATH "Root of ABC compiled source tree." FORCE)
 endif()
-find_program(ABC_ARCH_FLAGS NAMES "abc_arch_flags_program.exe" PATHS ${ABC_ROOT})
+find_program(ABC_ARCH_FLAGS NAMES arch_flags PATHS ${ABC_ROOT})
 
 if (ABC_ARCH_FLAGS)
   execute_process (COMMAND ${ABC_ARCH_FLAGS}
@@ -15,6 +15,10 @@ if (ABC_ARCH_FLAGS)
 endif()
 find_path(ABC_INCLUDE_DIR NAMES base/abc/abc.h PATHS ${ABC_ROOT}/src)
 find_library(ABC_LIBRARY NAMES abc PATHS ${ABC_ROOT})
+
+if (NOT ABC_LIBRARY)
+  set(ABC_LIBRARY ${CMAKE_BINARY_DIR}/libabc.so)
+endif()
 
 include (FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Abc

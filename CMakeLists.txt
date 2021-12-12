@@ -315,10 +315,11 @@ list(APPEND Z3_DEPENDENT_LIBS Threads::Threads)
 ################################################################################
 # ABC library
 ################################################################################
-unset(ABC_LIBRARY)
 find_package(Abc)
 if (ABC_FOUND)
+  message(STATUS "Using ABC")
   include_directories(${ABC_INCLUDE_DIR})
+  set(ABC_CXXFLAGS "${ABC_CXXFLAGS}")
   list(APPEND Z3_COMPONENT_CXX_FLAGS ${ABC_CXXFLAGS})
   list(APPEND Z3_DEPENDENT_LIBS ${ABC_LIBRARY})
   list(APPEND Z3_COMPONENT_CXX_DEFINES "-DABC_FOUND")
@@ -328,6 +329,7 @@ if (ABC_FOUND)
   # -ldl
   list(APPEND Z3_DEPENDENT_LIBS ${CMAKE_DL_LIBS})
 else()
+  message(STATUS "Not using ABC")
   set(ABC_LIBRARY "")
 endif ()
 
