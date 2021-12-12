@@ -968,6 +968,7 @@ struct aig_manager::imp {
     }
 
     void mk_ite(aig *n) {
+      // NOTE: ITE construction
       aig_lit c, t, e;
       VERIFY(m.is_ite(n, c, t, e));
       if (c.is_inverted()) {
@@ -1512,7 +1513,8 @@ public:
       inc_ref(n2);
       n1.invert();
       n2.invert();
-      aig_lit r = mk_and(n1, n2);
+      aig_lit r =
+          mk_and(n1, n2); // not (c and (not t)) and not ((not c) and (not e))
       inc_ref(r);
       dec_ref(n1);
       dec_ref(n2);
