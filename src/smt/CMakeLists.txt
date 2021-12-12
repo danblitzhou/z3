@@ -1,6 +1,6 @@
-if(ABC_FOUND)
-  set(ABC_SOURCES abc.cpp)
-endif()
+# if(ABC_FOUND)
+#   set(ABC_SOURCES abc.cpp)
+# endif()
 z3_add_component(smt
   SOURCES
     arith_eq_adapter.cpp
