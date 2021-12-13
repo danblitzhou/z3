@@ -70,7 +70,7 @@ public:
   void collect_param_descrs(param_descrs &r) override {
     insert_max_memory(r);
     r.insert("per_assertion", CPK_BOOL,
-             "(default: true) process one assertion at a time.");
+             "(default: true) aig: process one assertion at a time.");
     r.insert("dump_to_file", CPK_STRING,
              "(default: \"\") write aig (aiger format) into a file.");
   }

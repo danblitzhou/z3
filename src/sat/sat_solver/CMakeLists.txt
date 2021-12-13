@@ -3,6 +3,7 @@ z3_add_component(sat_solver
     inc_sat_solver.cpp
   COMPONENT_DEPENDENCIES
     aig_tactic
+    abc_tactic
     arith_tactics
     bv_tactics
     core_tactics
