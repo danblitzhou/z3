@@ -1,4 +1,4 @@
-#include "tactic/aig/abc/abc.h"
+#include "tactic/abc/abc.h"
 #include "tactic/tactic_params.hpp"
 #include "tactic/tactical.h"
 
@@ -6,6 +6,7 @@ class abc_manager;
 
 class abc_tactic : public tactic {
   abc_manager *m_abc_manager;
+  bool m_aig_per_assertion;
 
   struct mk_abc_manager {
     abc_tactic &m_owner;
@@ -28,16 +29,25 @@ public:
 
   tactic *translate(ast_manager &m) override {
     abc_tactic *t = alloc(abc_tactic);
+    t->m_aig_per_assertion = m_aig_per_assertion;
     return t;
   }
 
-  void updt_params(params_ref const &p) override { tactic_params tp(p); }
+  void updt_params(params_ref const &p) override { 
+    tactic_params tp(p);
+    m_aig_per_assertion =
+        p.get_bool("abc_per_assertion", tp.abc_per_assertion());
+  }
 
-  void collect_param_descrs(param_descrs &r) override {}
+  void collect_param_descrs(param_descrs &r) override {
+    r.insert("per_assertion", CPK_BOOL,
+             "(default: true) abc: process one assertion at a time.");
+  }
 
   void operator()(goal_ref const &g) {
     // run abc manager here:
     mk_abc_manager mk(*this, g->m());
+    m_abc_manager->build_per_assertion(m_aig_per_assertion);
     m_abc_manager->abc_exec(g, "rewrite");
   }
 

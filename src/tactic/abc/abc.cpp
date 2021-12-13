@@ -1,6 +1,6 @@
 
 
-#include "tactic/aig/abc/abc.h"
+#include "tactic/abc/abc.h"
 #include "ast/ast_printer.h"
 #include "ast/ast_smt2_pp.h"
 #include "base/abc/abc.h" // abc
@@ -155,7 +155,11 @@ public:
 
   abc_ref mk_aig(expr *e, abc::Abc_Ntk_t *ntk);
 
+  abc_ref mk_aig(goal_ref const &g, abc::Abc_Ntk_t *ntk);
+
   expr *to_z3_expr(abc::Abc_Obj_t *obj, abc::Abc_Ntk_t *ntk);
+
+  void to_z3_expr(goal &g, abc::Abc_Obj_t *obj, abc::Abc_Ntk_t *ntk);
 
   void print_ntk_stats(abc::Abc_Ntk_t *ntk) {
     TRACE("abc", tout << "abc: ntk num objs: " << ntk->nObjs << "\n");
@@ -257,7 +261,7 @@ public:
     TRACE("aig", m.m_printer->display(tout << "aig: \n", e); tout << "\n";);
     TRACE("aig",
           tout << "expr kind: " << get_ast_kind_name(e->get_kind()) << "\n";);
-    m.print_ntk_stats(ntk);
+    // m.print_ntk_stats(ntk);
     if (is_app(e)) { // either app or var
       app *tapp = to_app(e);
       TRACE("aig", tout << "app decl kind: " << tapp->get_decl_kind() << "\n";);
@@ -355,7 +359,24 @@ public:
     }
   }
 
-  abc_ref mk_aig(expr *n, abc::Abc_Ntk_t *ntk) { return _mk_aig(n, ntk); }
+  abc_ref mk_aig(expr *e, abc::Abc_Ntk_t *ntk) {
+    TRACE("expr", m.m_printer->display(tout << "mk_aig: \n", e); tout << "\n";);
+    return _mk_aig(e, ntk);
+  }
+
+  abc_ref mk_aig(goal_ref const &g, abc::Abc_Ntk_t *ntk) {
+    abc_ref r;
+    TRACE("goal", g->display(tout << "mk_aig\n"););
+    for (unsigned i = 0; i < g->size(); ++i) {
+      abc_ref temp = this->mk_aig(g->form(i), ntk);
+      if (i > 0)
+        r = this->mk_and(r, temp, ntk);
+      else 
+        r = temp;
+      r.get_ref()->iTemp = 1;
+    }
+    return r;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -566,6 +587,27 @@ public:
     }
     return nullptr;
   }
+
+  void to_z3_expr(goal &g, abc::Abc_Obj_t *obj, abc::Abc_Ntk_t *ntk) {
+    g.reset();
+    sbuffer<abc::Abc_Obj_t *> roots;
+    roots.push_back(obj);
+    while (!roots.empty()) {
+      abc::Abc_Obj_t *n = roots.back();
+      int fanin = Abc_ObjFaninNum(n);
+      roots.pop_back();
+      if (Abc_AigNodeIsAnd(obj) && obj->iTemp == 1) {
+        // and
+        SASSERT(fanin == 2);
+        roots.push_back(Abc_ObjFanin0(n));
+        roots.push_back(Abc_ObjFanin1(n));
+      }
+      else {
+        g.assert_expr(to_z3_expr(n, ntk), nullptr, nullptr);
+        continue;
+      }
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -582,10 +624,26 @@ abc_ref imp::mk_aig(expr *e, abc::Abc_Ntk_t *ntk) {
   return r;
 }
 
+abc_ref imp::mk_aig(goal_ref const &g, abc::Abc_Ntk_t *ntk) {
+  abc_ref r;
+  {
+    expr2aig proc(*this);
+    r = proc.mk_aig(g, ntk);
+    inc_ref(r);
+  }
+  dec_ref_result(r);
+  return r;
+}
+
 expr *imp::to_z3_expr(abc::Abc_Obj_t *obj, abc::Abc_Ntk_t *ntk) {
   aig2expr proc(*this);
   expr *res = proc.to_z3_expr(obj, ntk);
   return res;
+}
+
+void imp::to_z3_expr(goal &g, abc::Abc_Obj_t *obj, abc::Abc_Ntk_t *ntk) {
+  aig2expr proc(*this);
+  proc.to_z3_expr(g, obj, ntk);
 }
 
 abc_ref::abc_ref(abc_manager &m, abc_ref r) : m_manager(&m), m_ref(r.m_ref) {
@@ -598,8 +656,7 @@ abc_ref::~abc_ref() {
   }
 }
 
-abc_manager::abc_manager(ast_manager &m, unsigned long long max_memory)
-    : m_max_memory(max_memory) {
+abc_manager::abc_manager(ast_manager &m) {
   m_imp = new imp(m, *this);
   m_frm = Abc_FrameGetGlobalFrame();
   m_imp->m_printer = mk_simple_ast_printer_context(m);
@@ -607,15 +664,17 @@ abc_manager::abc_manager(ast_manager &m, unsigned long long max_memory)
 
 abc_manager::~abc_manager() {}
 
-void abc_manager::set_max_memory(unsigned long long max) { m_max_memory = max; }
-
 abc_ref abc_manager::mk_aig(expr *n, abc::Abc_Ntk_t *ntk) {
   return abc_ref(*this, m_imp->mk_aig(n, ntk));
 }
 
-// abc_ref abc_manager::mk_aig(goal const &g) {
+abc_ref abc_manager::mk_aig(goal_ref const &g, abc::Abc_Ntk_t *ntk) {
+  return m_imp->mk_aig(g, ntk);
+}
 
-// }
+void abc_manager::build_per_assertion(bool aig_per_assertion) {
+  this->m_build_per_assertion = aig_per_assertion;
+}
 
 // abc_ref abc_manager::mk_not(abc_ref const &r) {
 
@@ -644,29 +703,39 @@ abc_ref abc_manager::mk_po(abc::Abc_Ntk_t *ntk) {
   return r;
 }
 
-// void max_sharing(abc_ref &r);
-
 abc::Abc_Ntk_t *abc_manager::to_abc(goal_ref const &g) {
   // create a network
   abc::Abc_Ntk_t *ntk = m_imp->newAigNetwork();
   m_imp->print_ntk_stats(ntk);
-  if (true) { // run abc per assertion
+  if (m_build_per_assertion) { // run abc per assertion
     for (unsigned i = 0; i < g->size(); ++i) {
       abc_ref ro = mk_po(ntk);
       abc_ref r = this->mk_aig(g->form(i), ntk);
       abc::Abc_ObjAddFanin(ro.get_ref(), r.get_ref());
     }
   }
+  else {
+    abc_ref ro = mk_po(ntk);
+    abc_ref r = this->mk_aig(g, ntk);
+    abc::Abc_ObjAddFanin(ro.get_ref(), r.get_ref());
+  }
   return ntk;
 }
 
 void abc_manager::to_expr(goal_ref const &g, abc::Abc_Ntk_t *ntk) {
   m_imp->print_ntk_stats(ntk);
-  for (int i = 0; i < Abc_NtkPoNum(ntk); ++i) {
-    expr *new_e = m_imp->to_z3_expr(Abc_NtkPo(ntk, i), ntk);
-    SASSERT(new_e);
-    expr_dependency *ed = g->dep(i);
-    g->update(i, new_e, nullptr, ed);
+  if (m_build_per_assertion) { // run abc per assertion
+    for (int i = 0; i < Abc_NtkPoNum(ntk); ++i) {
+      expr *new_e = m_imp->to_z3_expr(Abc_NtkPo(ntk, i), ntk);
+      SASSERT(new_e);
+      expr_dependency *ed = g->dep(i);
+      g->update(i, new_e, nullptr, ed);
+    }
+  }
+  else {
+    g->reset(); // save memory
+    SASSERT(Abc_NtkPoNum(ntk) == 1); // only one output
+    m_imp->to_z3_expr(*(g.get()), Abc_NtkPo(ntk, 0), ntk);
   }
 }
 
@@ -690,7 +759,6 @@ void abc_manager::abc_exec(goal_ref const &g, const char *cmd) {
   // convert expr * to abc aig
   abc::Abc_Ntk_t *ntk = to_abc(g);
   setNtk(ntk);
-  m_imp->print_ntk_stats(ntk);
   // run abc rewritter...
   Abc_NtkReassignIds(ntk);
   run_abc(cmd);

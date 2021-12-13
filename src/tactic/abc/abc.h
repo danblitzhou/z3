@@ -28,7 +28,7 @@ Revision History:
 ////////////////////////////////////////////////////////////////////////
 // ABC includes
 ////////////////////////////////////////////////////////////////////////
-#ifdef ABC_FOUND
+// #ifdef ABC_FOUND
 #include "base/abc/abc.h"      // abc
 #include "base/cmd/cmd.h"      // abc command
 #include "base/main/abcapis.h" // abc apis
@@ -104,7 +104,7 @@ class abc_manager {
   friend class abc_ref;
   imp *m_imp;
   abc::Abc_Frame_t *m_frm;
-  unsigned long long m_max_memory;
+  bool m_build_per_assertion;
 
   abc_ref mk_po(abc::Abc_Ntk_t *ntk);
   abc::Abc_Ntk_t *to_abc(goal_ref const &g);
@@ -114,17 +114,11 @@ class abc_manager {
   Abc_Ntk_t *getNtk();
 
 public:
-  abc_manager(ast_manager &m, unsigned long long max_memory = UINT64_MAX);
+  abc_manager(ast_manager &m);
   ~abc_manager();
-  void set_max_memory(unsigned long long max);
   abc_ref mk_aig(expr *n, abc::Abc_Ntk_t *ntk);
-  // abc_ref mk_aig(goal const &g);
-  // abc_ref mk_not(abc_ref const &r);
-  // abc_ref mk_and(abc_ref const &r1, abc_ref const &r2);
-  // abc_ref mk_or(abc_ref const &r1, abc_ref const &r2);
-  // abc_ref mk_iff(abc_ref const &r1, abc_ref const &r2);
-  // abc_ref mk_ite(abc_ref const &r1, abc_ref const &r2, abc_ref const &r3);
-  // void max_sharing(abc_ref &r);
+  abc_ref mk_aig(goal_ref const &g, abc::Abc_Ntk_t *ntk);
+  void build_per_assertion(bool aig_per_assertion);
   void run_abc(const char *cmd);
   /** convert e to aig and execute ABC command cmd against it **/
   void abc_exec(goal_ref const &g, const char *cmd);
@@ -136,18 +130,18 @@ public:
   void display_aig(std::ostream &out, abc_ref const &r) const;
   void display_smt2(std::ostream &out, abc_ref const &r) const;
 };
-#else
-// NO Abc found
-inline expr *abc_exec(expr *e, const char *cmd) {
-  warning_msg("ABC not found, command %s has no effect.", cmd);
-  return e;
-}
+// #else
+// // NO Abc found
+// inline expr *abc_exec(expr *e, const char *cmd) {
+//   warning_msg("ABC not found, command %s has no effect.", cmd);
+//   return e;
+// }
 
-inline expr *abc_rewrite(expr *e) {
-  warning_msg("ABC not found, DAG-aware rewrite has no effect.");
-  return e;
-}
+// inline expr *abc_rewrite(expr *e) {
+//   warning_msg("ABC not found, DAG-aware rewrite has no effect.");
+//   return e;
+// }
 
-#endif // ifdef ABC_FOUND
+// #endif // ifdef ABC_FOUND
 
 #endif // __ABC__H__
