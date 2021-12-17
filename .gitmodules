@@ -3,4 +3,4 @@
 	url = https://github.com/arminbiere/aiger.git
 [submodule "externals/abc"]
 	path = externals/abc
-	url = https://github.com/berkeley-abc/abc.git
+	url = https://github.com/LinerSu/abc.git
