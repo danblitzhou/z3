@@ -29,6 +29,7 @@ Notes:
 #include "solver/parallel_tactic.h"
 #include "tactic/tactical.h"
 #include "tactic/aig/aig_tactic.h"
+#include "tactic/abc/abc_tactic.h"
 #include "tactic/core/propagate_values_tactic.h"
 #include "tactic/bv/max_bv_sharing_tactic.h"
 #include "tactic/arith/card2bv_tactic.h"

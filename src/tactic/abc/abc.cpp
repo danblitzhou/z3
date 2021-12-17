@@ -6,6 +6,7 @@
 #include "base/abc/abc.h" // abc
 #include "tactic/goal.h"
 #include "util/trace.h"
+#include <time.h>
 
 extern bool nd_bool();
 
@@ -103,8 +104,10 @@ class imp {
   obj_map<expr, abc::Abc_Obj_t *> m_abc_map;
   abc_obj_map<expr *> m_rev_abc_map;
   svector<abc_ref> m_to_delete;
+  svector<abc::Abc_Obj_t *> m_pis;
   small_object_allocator m_allocator;
   ast_printer_context *m_printer;
+  clock_t m_clk_rw;
   imp(ast_manager &m, abc_manager &m_abc)
       : m_input_num(0), m_output_num(0), m_gate_num(0), man(m),
         man_abc(&m_abc) {}
@@ -167,6 +170,37 @@ public:
     TRACE("abc", tout << "abc: ntk num pos: " << Abc_NtkPoNum(ntk) << "\n");
     TRACE("abc", tout << "abc: ntk num node: " << Abc_NtkNodeNum(ntk) << "\n");
     TRACE("abc", tout << "abc: ntk num box: " << Abc_NtkBoxNum(ntk) << "\n");
+  }
+
+  void print_expr_res(std::ostream &out, abc::Abc_Ntk_t *ntk) {
+    out << "gate num before: "<< m_gate_num <<"\n";
+    out << "gate num after: "<< ntk->nObjs <<"\n";
+    out << "gate num reduced: "<< m_gate_num - ntk->nObjs <<"\n";
+
+    char buf[1024]; 
+    sprintf(buf, "ABC rewriting: %6.2f sec", (float)(m_clk_rw)/(float)(CLOCKS_PER_SEC));
+    out << std::string(buf) <<"\n";
+
+  }
+
+  void set_pi_vec(abc::Abc_Ntk_t *ntk) {
+    for (int i = 0; i < Abc_NtkPiNum(ntk); ++i) {
+      m_pis.push_back(Abc_NtkPi(ntk, i));
+    }
+  }
+
+  void update_rev_abc_map(abc::Abc_Ntk_t *ntk) {
+    for (int i = 0; i < Abc_NtkPiNum(ntk); ++i) {
+      abc::Abc_Obj_t *old_pi = m_pis[i];
+      abc::Abc_Obj_t *new_pi = Abc_NtkPi(ntk, i);
+      if (new_pi != old_pi) {
+        TRACE("cache", tout << "new: " << new_pi << ", old:" << old_pi << "\n";);
+        SASSERT(m_rev_abc_map.contains(old_pi));
+        expr *val = m_rev_abc_map[old_pi];
+        m_rev_abc_map.insert(new_pi, val);
+        m_rev_abc_map.remove(old_pi);
+      }
+    }
   }
 };
 
@@ -430,7 +464,7 @@ public:
     //    not (c and (not t)) and not ((not c) and (not e))
     Abc_Obj_t *left = Abc_ObjFanin0(obj);
     Abc_Obj_t *right = Abc_ObjFanin1(obj);
-    if (Abc_ObjIsComplement(left) && Abc_ObjIsComplement(right)) {
+    if (Abc_ObjFaninC0(obj) && Abc_ObjFaninC1(obj)) {
       if (Abc_ObjFaninNum(left) < 2 || Abc_ObjFaninNum(right) < 2) {
         return false;
       }
@@ -443,7 +477,7 @@ public:
       Abc_Obj_t *r1 = Abc_ObjFanin0(right);
       Abc_Obj_t *r2 = Abc_ObjFanin1(right);
       if (Abc_ObjNot(l1) == r1) {
-        if (Abc_ObjIsComplement(l1)) {
+        if (Abc_ObjFaninC0(left)) {
           *c = r1;
           *t = Abc_ObjNot(r2);
           *e = Abc_ObjNot(l2);
@@ -453,7 +487,7 @@ public:
           *e = Abc_ObjNot(r2);
         }
       } else if (Abc_ObjNot(l1) == r2) {
-        if (Abc_ObjIsComplement(l1)) {
+        if (Abc_ObjFaninC0(left)) {
           *c = r2;
           *t = Abc_ObjNot(r1);
           *e = Abc_ObjNot(l2);
@@ -470,6 +504,7 @@ public:
   bool is_iff() { return true; }
 
   bool is_xor(Abc_Obj_t *obj, Abc_Obj_t **a, Abc_Obj_t **b) {
+    // a xor b == not ( not a and not b ) and not ( a and b )  
     if (is_var(obj))
       return false;
     if (Abc_NodeIsExorType(obj)) {
@@ -494,6 +529,25 @@ public:
     return Abc_NodeIsExorType(obj);
   }
 
+  bool is_or(Abc_Obj_t *obj, Abc_Obj_t **a, Abc_Obj_t **b) {
+    // a or b == not (not a and not b)
+    TRACE("debug", tout << Abc_ObjIsComplement(obj) << "\n";);
+    TRACE("debug", tout << Abc_ObjFaninNum(obj) << "\n";);
+    if (is_var(obj))
+      return false;
+    if (Abc_ObjFaninNum(obj) < 2) {
+      return false;
+    }
+    if (Abc_ObjFaninC0(obj) && Abc_ObjFaninC1(obj)) {
+      Abc_Obj_t *left = Abc_ObjFanin0(obj);
+      Abc_Obj_t *right = Abc_ObjFanin1(obj);
+      *a = left;
+      *b = right;
+      return true;
+    }
+    return false;
+  }
+
   expr *to_z3_expr(Abc_Obj_t *obj, Abc_Ntk_t *ntk) {
     // AIG format:
     // each node in the graph:
@@ -501,6 +555,8 @@ public:
     //  edge is a normal edge or edge with complement
     bool isCompl = Abc_ObjIsComplement(obj);
     int fanin = Abc_ObjFaninNum(obj);
+    TRACE("debug", tout << obj << "\t" << Abc_ObjIsComplement(obj) << "\n";);
+    TRACE("debug", tout << Abc_ObjFaninNum(obj) << "\n";);
     expr *res;
     if (is_cached(obj)) {
       return get_cache_result(obj);
@@ -511,21 +567,37 @@ public:
       if (Abc_AigNodeIsConst(obj)) { // is const true
         res = isCompl ? get_man().mk_false() : get_man().mk_true();
         cache_result(obj, res);
-        return res;
       } else { // is pi
         SASSERT(is_var(obj));
         res = to_z3_var(obj, ntk);
         res = isCompl ? get_man().mk_not(res) : res;
         cache_result(obj, res);
-        return res;
       }
+      TRACE("debug", tout << mk_ismt2_pp(res, m.getMan(), 2) << "\n";);
+      return res;
       break;
     }
     case 1: {
-      res = to_z3_expr(Abc_ObjFanin0(obj), ntk);
-      if (Abc_ObjFaninC0(obj))
-        res = get_man().mk_not(res);
+      if (Abc_ObjFaninC0(obj)) {
+        Abc_Obj_t *t, *e = nullptr;
+        expr *left, *right = nullptr;
+        if (is_or(Abc_ObjFanin0(obj), &t, &e)) {
+          SASSERT(t != nullptr);
+          SASSERT(e != nullptr);
+          left = to_z3_expr(t, ntk);
+          right = to_z3_expr(e, ntk);
+          res = get_man().mk_or(left, right);
+        }
+        else {
+          res = to_z3_expr(Abc_ObjFanin0(obj), ntk);
+          res = get_man().mk_not(res);
+        }
+      }
+      else {
+        res = to_z3_expr(Abc_ObjFanin0(obj), ntk);
+      }
       cache_result(obj, res);
+      TRACE("debug", tout << mk_ismt2_pp(res, m.getMan(), 2) << "\n";);
       return res;
       break;
     }
@@ -706,7 +778,6 @@ abc_ref abc_manager::mk_po(abc::Abc_Ntk_t *ntk) {
 abc::Abc_Ntk_t *abc_manager::to_abc(goal_ref const &g) {
   // create a network
   abc::Abc_Ntk_t *ntk = m_imp->newAigNetwork();
-  m_imp->print_ntk_stats(ntk);
   if (m_build_per_assertion) { // run abc per assertion
     for (unsigned i = 0; i < g->size(); ++i) {
       abc_ref ro = mk_po(ntk);
@@ -749,7 +820,9 @@ Abc_Ntk_t *abc_manager::getNtk() { return abc::Abc_FrameReadNtk(frm()); }
 
 void abc_manager::run_abc(const char *cmd) {
   abc::Abc_Frame_t *fm = frm();
+  clock_t clk = clock();
   abc::Cmd_CommandExecute(fm, cmd);
+  m_imp->m_clk_rw = clock() - clk;
 }
 
 void abc_manager::abc_exec(goal_ref const &g, const char *cmd) {
@@ -761,8 +834,13 @@ void abc_manager::abc_exec(goal_ref const &g, const char *cmd) {
   setNtk(ntk);
   // run abc rewritter...
   Abc_NtkReassignIds(ntk);
+  m_imp->set_pi_vec(ntk);
+  m_imp->print_ntk_stats(ntk);
+  m_imp->m_gate_num = ntk->nObjs;
   run_abc(cmd);
   TRACE("abc", tout << "abc: rewriting complete... \n");
+  m_imp->print_expr_res(std::cout, ntk);
+  m_imp->update_rev_abc_map(ntk);
   // convert abc aig to expr *
   to_expr(g, ntk);
   TRACE("goal", g->display(tout << "output\n"););

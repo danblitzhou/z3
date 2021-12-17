@@ -33,6 +33,8 @@ Notes:
 #include "tactic/smtlogics/qfidl_tactic.h"
 #include "tactic/smtlogics/nra_tactic.h"
 #include "tactic/portfolio/default_tactic.h"
+#include "tactic/abc/abc_tactic.h"
+#include "tactic/tactical.h"
 #include "tactic/fd_solver/fd_solver.h"
 #include "tactic/fd_solver/smtfd_solver.h"
 #include "tactic/ufbv/ufbv_tactic.h"
@@ -159,7 +161,8 @@ public:
             if (s) return s;
         }
         if (!t) {
-            t = mk_tactic_for_logic(m, p, l);
+            bool use_abc = tp.use_abc_tactic();
+            t = use_abc ? and_then(mk_abc_tactic(p), mk_tactic_for_logic(m, p, l)) : mk_tactic_for_logic(m, p, l);
         }
         return mk_combined_solver(mk_tactic2solver(m, t.get(), p, proofs_enabled, models_enabled, unsat_core_enabled, l),
                                   mk_solver_for_logic(m, p, l), 
