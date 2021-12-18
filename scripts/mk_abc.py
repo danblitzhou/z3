@@ -42,14 +42,21 @@ def collect_res(plain_data, bench_name, name, use_aig_rewrite):
         aig_time = a[3]
         res.append(aig_time.split(':')[1].replace(
             " ", "").replace("\t", "").replace("\n", "")[:-3])
+        # FIXME: The time collected by z3 does not belong to solver time
+        solver_time = a[-3]
+        res.append(solver_time.split('e')[1].replace(
+            " ", "").replace("\t", "").replace("\n", ""))
+        sat_result = a[4]
+        res.append(sat_result)
     else:
-        res.append([0, 0, 0.0])
-    # FIXME: The time collected by z3 does not belong to solver time
-    solver_time = a[-3]
-    res.append(solver_time.split('e')[1].replace(
-        " ", "").replace("\t", "").replace("\n", ""))
-    sat_result = a[4]
-    res.append(sat_result)
+        res.extend([0, 0, 0.0])
+        solver_time = a[-2]
+        print(solver_time)
+        res.append(solver_time.split('e')[1].replace(
+            " ", "").replace("\t", "").replace("\n", "").replace(")",""))
+        sat_result = a[0]
+        res.append(sat_result)
+   
     return res
 
 
