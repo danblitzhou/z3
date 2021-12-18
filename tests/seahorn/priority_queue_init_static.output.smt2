@@ -1,0 +1,20 @@
+(declare-fun main@%_3_0 () (_ BitVec 64))
+(declare-fun main@%_2_0 () (_ BitVec 64))
+(declare-fun sea.sp0_0 () (_ BitVec 64))
+
+(assert (let ((a!1 (= (ite (= (bvmul main@%_2_0 main@%_3_0) #x0000000000000000)
+                   #x00
+                   #x01)
+              #x00)))
+(let ((a!2 (not (and (not (= main@%_2_0 #x0000000000000000)) (not a!1)))))
+  (and (= #b000 ((_ extract 2 0) sea.sp0_0))
+       (bvule sea.sp0_0 #x00000000c0000000)
+       (bvuge sea.sp0_0 #x00000000bf700000)
+       a!2
+       (not (bvsle (bvadd #xffffffffffffffff main@%_3_0) #xffffffffffffffff))
+       (not (or (= main@%_2_0 #x0000000000000000)
+                (bvule #x0000000000000003 main@%_2_0)))
+       (bvumul_noovfl main@%_3_0 main@%_2_0)
+       (not (= main@%_3_0 #x0000000000000000))
+       (not (= main@%_2_0 #x0000000000000000))))))
+(check-sat)

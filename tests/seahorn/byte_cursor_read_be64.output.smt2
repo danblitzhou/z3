@@ -1,0 +1,292 @@
+(declare-fun |extract-value(main@%sm20, 0)_0|
+             ()
+             (Array (_ BitVec 64) (_ BitVec 8)))
+(declare-fun |extract-value(main@%sm21, 0)_0|
+             ()
+             (Array (_ BitVec 64) (_ BitVec 8)))
+(declare-fun main@%_105_0 () (_ BitVec 64))
+(declare-fun |extract-value(main@%sm19, 0)_0|
+             ()
+             (Array (_ BitVec 64) (_ BitVec 8)))
+(declare-fun main@%_14_0 () Bool)
+(declare-fun main@%_35_0 () (_ BitVec 64))
+(declare-fun main@%_10_0 () Bool)
+(declare-fun main@%_4_0 () (_ BitVec 64))
+(declare-fun sea.sp0_0 () (_ BitVec 64))
+
+(assert (let ((a!1 (not (= (ite main@%_10_0
+                        #x0000000000000000
+                        (bvadd #xffffffffffffffce sea.sp0_0))
+                   #x0000000000000000)))
+      (a!2 (concat ((_ extract 63 4) (bvadd #x0000000000000001 main@%_4_0))
+                   (concat #b1 (bvadd #b001 ((_ extract 2 0) main@%_4_0)))))
+      (a!32 (not (= (ite main@%_14_0
+                         #x0000000000000000
+                         (bvadd #xffffffffffffffc6 sea.sp0_0))
+                    #x0000000000000000)))
+      (a!40 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000001
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!41 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000002
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!42 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000003
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!43 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000004
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!44 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000005
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!45 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000006
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!46 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000007
+                           (ite main@%_10_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!57 (select |extract-value(main@%sm20, 0)_0|
+                    (bvadd (ite main@%_14_0
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffc6 sea.sp0_0))
+                           main@%_105_0))))
+(let ((a!3 (or main@%_10_0
+               (bvsle (bvor a!2 (bvadd #xfffffffffffffff8 main@%_4_0))
+                      #xffffffffffffffff)))
+      (a!5 (ite (bvsle (bvor a!2 (bvadd #xfffffffffffffff8 main@%_4_0))
+                       #xffffffffffffffff)
+                #b0
+                #b1))
+      (a!33 (and (not (bvule #x000000000000000b main@%_4_0))
+                 (or (= main@%_4_0 #x0000000000000000) a!1)
+                 (not (= ((_ extract 63 3) main@%_4_0)
+                         #b0000000000000000000000000000000000000000000000000000000000000))
+                 a!1
+                 a!32
+                 (not (bvule main@%_4_0 main@%_35_0))))
+      (a!34 (and (not (bvule #x000000000000000b main@%_4_0))
+                 (or (= main@%_4_0 #x0000000000000000) a!1)
+                 (not (= ((_ extract 63 3) main@%_4_0)
+                         #b0000000000000000000000000000000000000000000000000000000000000))
+                 a!1
+                 a!32))
+      (a!47 (ite (= main@%_105_0 #x0000000000000001)
+                 a!45
+                 (ite (= main@%_105_0 #x0000000000000000)
+                      a!46
+                      (select |extract-value(main@%sm19, 0)_0|
+                              (bvadd #xffffffffffffffd8 sea.sp0_0 main@%_105_0))))))
+(let ((a!4 (or (= ((_ extract 63 3) main@%_4_0)
+                  #b0000000000000000000000000000000000000000000000000000000000000)
+               (bvsle main@%_4_0 #xffffffffffffffff)
+               (= (ite a!3
+                       #x0000000000000000
+                       (bvadd #xffffffffffffffce sea.sp0_0))
+                  #x0000000000000000)))
+      (a!6 (concat (bvnot a!5)
+                   (concat (bvnot a!5) (concat (bvnot a!5) (bvnot a!5)))))
+      (a!29 (ite (or (= ((_ extract 63 3) main@%_4_0)
+                        #b0000000000000000000000000000000000000000000000000000000000000)
+                     (bvsle main@%_4_0 #xffffffffffffffff))
+                 (ite main@%_10_0
+                      #x0000000000000000
+                      (bvadd #xffffffffffffffce sea.sp0_0))
+                 (ite a!3
+                      #x0000000000000000
+                      (bvadd #xffffffffffffffce sea.sp0_0))))
+      (a!30 (ite (or (= ((_ extract 63 3) main@%_4_0)
+                        #b0000000000000000000000000000000000000000000000000000000000000)
+                     (bvsle main@%_4_0 #xffffffffffffffff))
+                 #x0000000000000000
+                 (concat #x000000000000000 (concat a!5 #b000))))
+      (a!35 (ite (and (not (= main@%_4_0 #x0000000000000000)) a!1) a!33 a!34))
+      (a!48 (ite (= main@%_105_0 #x0000000000000004)
+                 a!42
+                 (ite (= main@%_105_0 #x0000000000000003)
+                      a!43
+                      (ite (= main@%_105_0 #x0000000000000002) a!44 a!47))))
+      (a!50 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000001
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!51 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000002
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!52 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000003
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!53 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000004
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!54 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000005
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!55 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000006
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!56 (select |extract-value(main@%sm21, 0)_0|
+                    (bvadd #x0000000000000007
+                           (ite a!3
+                                #x0000000000000000
+                                (bvadd #xffffffffffffffce sea.sp0_0)))))
+      (a!58 (ite (= main@%_105_0 #x0000000000000000)
+                 (select |extract-value(main@%sm21, 0)_0|
+                         (ite a!3
+                              #x0000000000000000
+                              (bvadd #xffffffffffffffce sea.sp0_0)))
+                 a!57)))
+(let ((a!7 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!6))))
+      (a!31 (and (= a!29
+                    (ite main@%_10_0
+                         #x0000000000000000
+                         (bvadd #xffffffffffffffce sea.sp0_0)))
+                 (= a!30 #x0000000000000008)))
+      (a!36 (ite a!4
+                 a!35
+                 (and a!35 (not (bvule #x0000000000000008 main@%_105_0)))))
+      (a!49 (ite (= main@%_105_0 #x0000000000000007)
+                 (select |extract-value(main@%sm21, 0)_0|
+                         (ite main@%_10_0
+                              #x0000000000000000
+                              (bvadd #xffffffffffffffce sea.sp0_0)))
+                 (ite (= main@%_105_0 #x0000000000000006)
+                      a!40
+                      (ite (= main@%_105_0 #x0000000000000005) a!41 a!48))))
+      (a!59 (ite (= main@%_105_0 #x0000000000000003)
+                 a!52
+                 (ite (= main@%_105_0 #x0000000000000002)
+                      a!51
+                      (ite (= main@%_105_0 #x0000000000000001) a!50 a!58)))))
+(let ((a!8 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!7))))
+      (a!38 (and a!36
+                 (not (bvsle main@%_4_0 #xffffffffffffffff))
+                 (not (= ((_ extract 63 3) main@%_4_0)
+                         #b0000000000000000000000000000000000000000000000000000000000000))))
+      (a!60 (ite (= main@%_105_0 #x0000000000000006)
+                 a!55
+                 (ite (= main@%_105_0 #x0000000000000005)
+                      a!54
+                      (ite (= main@%_105_0 #x0000000000000004) a!53 a!59)))))
+(let ((a!9 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!8))))
+      (a!61 (ite (= main@%_105_0 #x0000000000000001)
+                 a!55
+                 (ite (or (= main@%_105_0 #x0000000000000000)
+                          (= main@%_105_0 #x0000000000000007))
+                      a!56
+                      a!60))))
+(let ((a!10 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!9))))
+      (a!62 (ite (= main@%_105_0 #x0000000000000004)
+                 a!52
+                 (ite (= main@%_105_0 #x0000000000000003)
+                      a!53
+                      (ite (= main@%_105_0 #x0000000000000002) a!54 a!61)))))
+(let ((a!11 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!10))))
+      (a!63 (ite (= main@%_105_0 #x0000000000000007)
+                 (select |extract-value(main@%sm21, 0)_0|
+                         (ite a!3
+                              #x0000000000000000
+                              (bvadd #xffffffffffffffce sea.sp0_0)))
+                 (ite (= main@%_105_0 #x0000000000000006)
+                      a!50
+                      (ite (= main@%_105_0 #x0000000000000005) a!51 a!62)))))
+(let ((a!12 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!11)))))
+(let ((a!13 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!12)))))
+(let ((a!14 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!13)))))
+(let ((a!15 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!14)))))
+(let ((a!16 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!15)))))
+(let ((a!17 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!16)))))
+(let ((a!18 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!17)))))
+(let ((a!19 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!18)))))
+(let ((a!20 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!19)))))
+(let ((a!21 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!20)))))
+(let ((a!22 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!21)))))
+(let ((a!23 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!22)))))
+(let ((a!24 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!23)))))
+(let ((a!25 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!24)))))
+(let ((a!26 (concat (bvnot a!5) (concat (bvnot a!5) (concat (bvnot a!5) a!25)))))
+(let ((a!27 (bvadd (bvnot (bvor (bvnot main@%_4_0) a!26))
+                   (bvmul #xffffffffffffffff
+                          (concat #x000000000000000 (concat a!5 #b000))))))
+(let ((a!28 (ite (or (= ((_ extract 63 3) main@%_4_0)
+                        #b0000000000000000000000000000000000000000000000000000000000000)
+                     (bvsle main@%_4_0 #xffffffffffffffff))
+                 main@%_4_0
+                 a!27)))
+(let ((a!37 (and a!36
+                 (not (bvsle main@%_4_0 #xffffffffffffffff))
+                 (not (= ((_ extract 63 3) main@%_4_0)
+                         #b0000000000000000000000000000000000000000000000000000000000000))
+                 (not (= a!28 (bvadd #xfffffffffffffff8 main@%_4_0))))))
+(let ((a!39 (ite (= a!28 #x0000000000000000)
+                 (ite a!31 a!37 a!38)
+                 (ite (and (= a!29 #x0000000000000000)
+                           (= a!30 #x0000000000000000))
+                      a!36
+                      (ite a!31 a!37 a!38)))))
+(let ((a!64 (ite (= a!49 a!63)
+                 a!39
+                 (and a!35 (not (bvule #x0000000000000008 main@%_105_0))))))
+(let ((a!65 (ite (bvsle #x0000000000000008
+                        (ite a!3 #x0000000000000000 #x000000000000000a))
+                 (ite (bvsle #x0000000000000008
+                             (ite main@%_14_0
+                                  #x0000000000000000
+                                  #x0000000000000008))
+                      a!64
+                      a!35)
+                 a!35)))
+(let ((a!66 (ite a!4
+                 a!39
+                 (ite (bvsle #x0000000000000008
+                             (ite main@%_14_0
+                                  #x0000000000000000
+                                  #x0000000000000008))
+                      a!65
+                      a!35))))
+(let ((a!67 (ite (bvsle (bvadd #x0000000000000001 main@%_35_0)
+                        (ite main@%_10_0 #x0000000000000000 #x000000000000000a))
+                 (ite (bvsle #x0000000000000008
+                             (ite main@%_10_0
+                                  #x0000000000000000
+                                  #x000000000000000a))
+                      a!66
+                      a!35)
+                 a!33)))
+(let ((a!68 (ite (and (not (= main@%_4_0 #x0000000000000000)) a!1)
+                 a!67
+                 (ite (bvsle #x0000000000000008
+                             (ite main@%_10_0
+                                  #x0000000000000000
+                                  #x000000000000000a))
+                      a!66
+                      a!35))))
+  (and (= #b00 ((_ extract 1 0) sea.sp0_0))
+       (bvule sea.sp0_0 #x00000000c0000000)
+       (bvuge sea.sp0_0 #x00000000bf700000)
+       a!68))))))))))))))))))))))))))))))))))
+(check-sat)

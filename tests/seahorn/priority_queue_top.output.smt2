@@ -1,0 +1,166 @@
+(declare-fun |extract-value(main@%sm41, 0)_0|
+             ()
+             (Array (_ BitVec 64) (_ BitVec 64)))
+(declare-fun main@%_9_0 () (_ BitVec 64))
+(declare-fun main@%_29_0 () (_ BitVec 64))
+(declare-fun main@%_151_0 () (_ BitVec 8))
+(declare-fun main@%_41_0 () Bool)
+(declare-fun main@%_157_0 () (_ BitVec 64))
+(declare-fun main@%_134_0 () (_ BitVec 64))
+(declare-fun sea.sp0_0 () (_ BitVec 64))
+(declare-fun main@%_32_0 () (_ BitVec 64))
+(declare-fun main@%_35_0 () (_ BitVec 64))
+(declare-fun main@%_21_0 () Bool)
+(declare-fun main@%_173_0 () (_ BitVec 8))
+(declare-fun main@%_15_0 () (_ BitVec 64))
+(declare-fun main@%_12_0 () (_ BitVec 64))
+(declare-fun |extract-value(main@%sm42, 0)_0|
+             ()
+             (Array (_ BitVec 64) (_ BitVec 64)))
+
+(assert (let ((a!1 (ite (or (= main@%_9_0 #x0000000000000000) main@%_21_0)
+                #x0000000000000000
+                (bvadd #xffffffffffffef38 sea.sp0_0)))
+      (a!2 (bvsle (bvadd #x0000000000000001 main@%_134_0)
+                  (ite (or (= main@%_9_0 #x0000000000000000) main@%_21_0)
+                       #x0000000000000000
+                       main@%_9_0)))
+      (a!3 (ite (or (= main@%_29_0 #x0000000000000000) main@%_41_0)
+                #x0000000000000000
+                (bvadd #xffffffffffffdf38 sea.sp0_0)))
+      (a!4 (bvsle (bvadd #x0000000000000001 main@%_157_0)
+                  (ite (or (= main@%_29_0 #x0000000000000000) main@%_41_0)
+                       #x0000000000000000
+                       main@%_29_0)))
+      (a!8 (and (not (= main@%_29_0 #x0000000000000000))
+                (= main@%_32_0 main@%_12_0)
+                (= main@%_35_0 #x0000000000000008)))
+      (a!18 (bvadd (ite (or (= main@%_29_0 #x0000000000000000) main@%_41_0)
+                        #b000
+                        ((_ extract 2 0) sea.sp0_0))
+                   ((_ extract 2 0) main@%_157_0)))
+      (a!23 (bvadd (ite (or (= main@%_9_0 #x0000000000000000) main@%_21_0)
+                        #b000
+                        ((_ extract 2 0) sea.sp0_0))
+                   ((_ extract 2 0) main@%_134_0))))
+(let ((a!5 (ite (= a!3 #x0000000000000000)
+                (ite (= main@%_29_0 #x0000000000000000)
+                     #x01
+                     (ite (= a!3 #x0000000000000000) #x00 #x01))
+                #x00))
+      (a!9 (ite (= main@%_29_0 #x0000000000000000)
+                (ite (= main@%_32_0 #x0000000000000000)
+                     (or (= a!3 #x0000000000000000) a!8)
+                     a!8)
+                a!8))
+      (a!10 (ite (= a!1 #x0000000000000000)
+                 (ite (= main@%_9_0 #x0000000000000000)
+                      #x01
+                      (ite (= a!1 #x0000000000000000) #x00 #x01))
+                 #x00))
+      (a!17 (select |extract-value(main@%sm42, 0)_0|
+                    (concat ((_ extract 63 3) (bvadd a!3 main@%_157_0)) #b000)))
+      (a!22 (select |extract-value(main@%sm41, 0)_0|
+                    (concat ((_ extract 63 3) (bvadd a!1 main@%_134_0)) #b000))))
+(let ((a!6 (= (ite (= main@%_29_0 #x0000000000000000)
+                   a!5
+                   (ite (= a!3 #x0000000000000000) #x00 #x01))
+              #x00))
+      (a!11 (= (ite (= main@%_9_0 #x0000000000000000)
+                    a!10
+                    (ite (= a!1 #x0000000000000000) #x00 #x01))
+               #x00))
+      (a!19 ((_ extract 7 0)
+              (bvlshr a!17
+                      (concat #b0000000000000000000000000000000000000000000000000000000000
+                              (concat a!18 #b000)))))
+      (a!24 ((_ extract 7 0)
+              (bvlshr a!22
+                      (concat #b0000000000000000000000000000000000000000000000000000000000
+                              (concat a!23 #b000))))))
+(let ((a!7 (ite (and (bvule (bvmul main@%_32_0 main@%_35_0) main@%_29_0)
+                     (bvumul_noovfl main@%_32_0 main@%_35_0)
+                     (not a!6))
+                (ite (or (= main@%_29_0 #x0000000000000000)
+                         (= a!3 #x0000000000000000)
+                         (= main@%_35_0 #x0000000000000000))
+                     #x00
+                     #x01)
+                #x00))
+      (a!20 (ite (and (not (= main@%_29_0 #x0000000000000000))
+                      (not (= a!3 #x0000000000000000)))
+                 a!19
+                 main@%_173_0))
+      (a!25 (ite (and (not (= main@%_9_0 #x0000000000000000))
+                      (not (= a!1 #x0000000000000000)))
+                 a!24
+                 main@%_151_0)))
+(let ((a!12 (and (not (bvule #x8000000000000001 main@%_12_0))
+                 (not (bvule #x0000000000000003 main@%_15_0))
+                 (not (bvule #x8000000000000001 main@%_32_0))
+                 (not (bvule #x0000000000000009 main@%_35_0))
+                 (not (= main@%_15_0 #x0000000000000000))
+                 (bvule (bvmul main@%_12_0 main@%_15_0) main@%_9_0)
+                 (bvumul_noovfl main@%_12_0 main@%_15_0)
+                 (not a!11)
+                 (not (= a!7 #x00))
+                 a!9
+                 (not (bvule main@%_9_0 main@%_134_0)))))
+(let ((a!13 (ite (and (not (= main@%_9_0 #x0000000000000000))
+                      (not (= a!1 #x0000000000000000)))
+                 a!12
+                 (and (not (bvule #x8000000000000001 main@%_12_0))
+                      (not (bvule #x0000000000000003 main@%_15_0))
+                      (not (bvule #x8000000000000001 main@%_32_0))
+                      (not (bvule #x0000000000000009 main@%_35_0))
+                      (not (= main@%_15_0 #x0000000000000000))
+                      (bvule (bvmul main@%_12_0 main@%_15_0) main@%_9_0)
+                      (bvumul_noovfl main@%_12_0 main@%_15_0)
+                      (not a!11)
+                      (not (= a!7 #x00))
+                      a!9))))
+(let ((a!14 (ite (and (not (= main@%_29_0 #x0000000000000000))
+                      (not (= a!3 #x0000000000000000)))
+                 (and a!13 (not (bvule main@%_29_0 main@%_157_0)))
+                 a!13)))
+(let ((a!15 (ite (= main@%_12_0 #x0000000000000000)
+                 a!14
+                 (and a!14 (not (= a!1 #x0000000000000000))))))
+(let ((a!16 (ite (= main@%_12_0 #x0000000000000000)
+                 a!14
+                 (and a!15 (not (= a!1 #x0000000000000000))))))
+(let ((a!21 (ite a!4
+                 (and a!16
+                      (not (= main@%_29_0 #x0000000000000000))
+                      (not (= a!3 #x0000000000000000))
+                      (not (= a!19 a!20)))
+                 (and a!16
+                      (not (= main@%_29_0 #x0000000000000000))
+                      (not (= a!3 #x0000000000000000))))))
+(let ((a!26 (ite (or (= main@%_9_0 #x0000000000000000)
+                     (= a!1 #x0000000000000000))
+                 a!21
+                 (ite a!2 (ite (= a!24 a!25) a!21 a!16) a!16))))
+(let ((a!27 (ite (and (not (= main@%_15_0 #x0000000000000000))
+                      (bvule (bvmul main@%_12_0 main@%_15_0) main@%_9_0)
+                      (bvumul_noovfl main@%_12_0 main@%_15_0)
+                      (not a!11))
+                 a!26
+                 a!16)))
+(let ((a!28 (ite (and (not (= a!7 #x00)) a!9) a!27 a!16)))
+(let ((a!29 (ite a!4 a!28 (and a!13 (not (bvule main@%_29_0 main@%_157_0))))))
+(let ((a!30 (ite (and (not (= main@%_29_0 #x0000000000000000))
+                      (not (= a!3 #x0000000000000000)))
+                 a!29
+                 a!28)))
+(let ((a!31 (ite (and (not (= main@%_9_0 #x0000000000000000))
+                      (not (= a!1 #x0000000000000000)))
+                 (ite a!2 a!30 a!12)
+                 a!30)))
+  (and (= #b000 ((_ extract 2 0) sea.sp0_0))
+       (bvule sea.sp0_0 #x00000000c0000000)
+       (bvuge sea.sp0_0 #x00000000bf700000)
+       (bvule main@%_9_0 #x0000000000001000)
+       (bvule main@%_29_0 #x0000000000001000)
+       a!31))))))))))))))))))
+(check-sat)
