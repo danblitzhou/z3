@@ -4,3 +4,9 @@
 [submodule "externals/abc"]
 	path = externals/abc
 	url = https://github.com/LinerSu/abc.git
+[submodule "tests/QF_FP"]
+	path = tests/QF_FP
+	url = https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_FP.git
+[submodule "tests/QF_LRA"]
+	path = tests/QF_LRA
+	url = https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_LRA.git
