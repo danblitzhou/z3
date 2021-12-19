@@ -509,8 +509,11 @@ public:
       return false;
     if (Abc_NodeIsExorType(obj)) {
       // is xor
+      // Abc_AigPrintNode(obj);
       Abc_Obj_t *left = Abc_ObjFanin0(obj);
+      // Abc_AigPrintNode(left);
       Abc_Obj_t *right = Abc_ObjFanin1(obj);
+      // Abc_AigPrintNode(right);
       if (Abc_ObjFaninNum(left) < 2 || Abc_ObjFaninNum(right) < 2) {
         return false;
       }
@@ -519,11 +522,23 @@ public:
       Abc_Obj_t *r1 = Abc_ObjFanin0(right);
       Abc_Obj_t *r2 = Abc_ObjFanin1(right);
       if (Abc_ObjFaninC0(left)) {
-        *a = r1;
-        *b = r2;
-      } else {
-        *a = l1;
-        *b = l2;
+        if (Abc_ObjFaninC1(left)) {
+          *a = r1;
+          *b = r2;
+        }
+        else {
+          *a = l1;
+          *b = l2;
+        }
+      } else if (Abc_ObjFaninC0(right)) {
+        if (Abc_ObjFaninC1(right)) {
+          *a = l1;
+          *b = l2;
+        }
+        else {
+          *a = r1;
+          *b = r2;
+        }
       }
     }
     return Abc_NodeIsExorType(obj);
@@ -548,6 +563,16 @@ public:
     return false;
   }
 
+  inline __attribute__((always_inline)) void trace_expr(expr *e) {
+    // { AST_APP, AST_VAR, AST_QUANTIFIER, AST_SORT, AST_FUNC_DECL } ast_kind
+    TRACE("debug", tout << mk_ismt2_pp(e, m.getMan(), 2) << "\t" << e->get_kind() << "\n";);
+  }
+
+  inline void trace_node(Abc_Obj_t *obj) {
+    TRACE("debug", tout << "node" << obj << "\tiscompl: " <<Abc_ObjIsComplement(obj)
+        << "\tfanin: " << Abc_ObjFaninNum(obj) << "\n";);
+  }
+
   expr *to_z3_expr(Abc_Obj_t *obj, Abc_Ntk_t *ntk) {
     // AIG format:
     // each node in the graph:
@@ -555,8 +580,7 @@ public:
     //  edge is a normal edge or edge with complement
     bool isCompl = Abc_ObjIsComplement(obj);
     int fanin = Abc_ObjFaninNum(obj);
-    TRACE("debug", tout << obj << "\t" << Abc_ObjIsComplement(obj) << "\n";);
-    TRACE("debug", tout << Abc_ObjFaninNum(obj) << "\n";);
+    trace_node(obj);
     expr *res;
     if (is_cached(obj)) {
       return get_cache_result(obj);
@@ -573,7 +597,7 @@ public:
         res = isCompl ? get_man().mk_not(res) : res;
         cache_result(obj, res);
       }
-      TRACE("debug", tout << mk_ismt2_pp(res, m.getMan(), 2) << "\n";);
+      trace_expr(res);
       return res;
       break;
     }
@@ -597,7 +621,7 @@ public:
         res = to_z3_expr(Abc_ObjFanin0(obj), ntk);
       }
       cache_result(obj, res);
-      TRACE("debug", tout << mk_ismt2_pp(res, m.getMan(), 2) << "\n";);
+      trace_expr(res);
       return res;
       break;
     }
@@ -628,12 +652,15 @@ public:
         right = to_z3_expr(e, ntk);
         if (Abc_ObjFaninC1(obj))
           right = get_man().mk_not(right);
+        trace_expr(left);
+        trace_expr(right);
       }
       SASSERT(Abc_AigNodeIsAnd(obj));
       switch (op) {
       case OP_XOR: {
         res = get_man().mk_xor(left, right);
         cache_result(obj, res);
+        trace_expr(res);
         return res;
         break;
       }
@@ -641,6 +668,7 @@ public:
         expr *cond = to_z3_expr(c, ntk);
         res = get_man().mk_ite(cond, left, right);
         cache_result(obj, res);
+        trace_expr(res);
         return res;
         break;
       }
@@ -648,6 +676,7 @@ public:
         res = get_man().mk_and(left, right);
         res = isCompl ? get_man().mk_not(res) : res;
         cache_result(obj, res);
+        trace_expr(res);
         return res;
       }
       }
@@ -778,6 +807,7 @@ abc_ref abc_manager::mk_po(abc::Abc_Ntk_t *ntk) {
 abc::Abc_Ntk_t *abc_manager::to_abc(goal_ref const &g) {
   // create a network
   abc::Abc_Ntk_t *ntk = m_imp->newAigNetwork();
+  Abc_NtkSetName(ntk, strdup ("z3"));
   if (m_build_per_assertion) { // run abc per assertion
     for (unsigned i = 0; i < g->size(); ++i) {
       abc_ref ro = mk_po(ntk);
@@ -797,10 +827,12 @@ void abc_manager::to_expr(goal_ref const &g, abc::Abc_Ntk_t *ntk) {
   m_imp->print_ntk_stats(ntk);
   if (m_build_per_assertion) { // run abc per assertion
     for (int i = 0; i < Abc_NtkPoNum(ntk); ++i) {
-      expr *new_e = m_imp->to_z3_expr(Abc_NtkPo(ntk, i), ntk);
-      SASSERT(new_e);
+      // Abc_AigPrintNode(Abc_NtkPo(ntk, i));
+      expr_ref new_f(g->m());
+      new_f = m_imp->to_z3_expr(Abc_NtkPo(ntk, i), ntk);
+      SASSERT(new_f.get());
       expr_dependency *ed = g->dep(i);
-      g->update(i, new_e, nullptr, ed);
+      g->update(i, new_f, nullptr, ed);
     }
   }
   else {

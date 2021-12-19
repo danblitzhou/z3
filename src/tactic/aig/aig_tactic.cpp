@@ -91,7 +91,7 @@ public:
           m_aig_manager->display_aag(file, r);
         }
         else {
-          m_aig_manager->display_aag(std::cout, r);
+          // m_aig_manager->display_aag(std::cout, r);
         }
         m_aig_manager->reset_aag_info();
         expr_dependency *ed = g->dep(i);
@@ -109,7 +109,7 @@ public:
           m_aig_manager->display_aag(file, r);
       }
       else {
-          m_aig_manager->display_aag(std::cout, r);
+          // m_aig_manager->display_aag(std::cout, r);
       }
     }
   }
