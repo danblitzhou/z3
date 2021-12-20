@@ -5,11 +5,13 @@ import glob
 import subprocess
 import argparse
 
-BUILDABSPATH = os.path.abspath('../debug/')
+import multiprocessing
+from multiprocessing import Pool
+
+BUILDABSPATH = os.path.abspath('../debug2/')
 OUTPUTPATH = os.path.abspath('../out/')
 DATAABSPATH = os.path.abspath('../') + "/data"
 TESTSPATH = os.path.abspath('../tests/')
-
 
 def get_output_level():
     if args.debug:
@@ -18,6 +20,23 @@ def get_output_level():
         output_level = subprocess.PIPE
     return output_level
 
+def process_call(cmd):
+    print(cmd)
+    process = subprocess.Popen(
+                '/bin/bash',
+                stdin=subprocess.PIPE,
+                stdout=get_output_level())
+    output, err = process.communicate(cmd.encode())
+    return output, err
+
+def multi_thread(cmd_lst):
+    results = []
+    pool = Pool(multiprocessing.cpu_count())
+    with pool as p:
+        results = p.map(process_call, cmd_lst)
+    pool.close()
+    pool.join()
+    return results
 
 def write_data_into_csv(file_name, res_data):
     with open(file_name, 'w+', newline='') as csvfile:
@@ -30,39 +49,52 @@ def write_data_into_csv(file_name, res_data):
 
 
 def collect_res(plain_data, bench_name, name, use_aig_rewrite):
-    res = [bench_name, name.split('.')[0]]
+    res = [None] * 7
+    res[0] = bench_name
+    res[1] = name.split('.')[0]
     a = plain_data.split('\n')
     if (use_aig_rewrite):
-        org_gate = a[0]
-        res.append(org_gate.split(':')[1].replace(
-            " ", "").replace("\t", "").replace("\n", ""))
-        reduced_gate = a[2]
-        res.append(reduced_gate.split(':')[1].replace(
-            " ", "").replace("\t", "").replace("\n", ""))
-        aig_time = a[3]
-        res.append(aig_time.split(':')[1].replace(
-            " ", "").replace("\t", "").replace("\n", "")[:-3])
-        if (a[-2] == "timeout"):
-            res.append(a[-2])
-        else :
-            for line in a:
-                if line.replace(" ", "").startswith(":solver-time"):
-                    res.append(line.split('e')[2].replace(
-                " ", "").replace("\t", "").replace("\n", ""))
-        sat_result = a[4]
-        res.append(sat_result)
+        for line in a:
+            if line.startswith("ASSERTION VIOLATION"):
+                return None
+            if line.startswith("gate num before:"):
+                res[2] = line.split(':')[1].replace(
+                " ", "").replace("\t", "").replace("\n", "")
+            if line.startswith("gate num reduced:"):
+                res[3] = line.split(':')[1].replace(
+                " ", "").replace("\t", "").replace("\n", "")
+            if line.startswith("ABC rewriting:"):
+                res[4] = line.split(':')[1].replace(
+                    " ", "").replace("\t", "").replace("\n", "")[:-3]
+            if line.startswith("timeout"):
+                res[5] = line
+            if line.startswith("sat") or line.startswith("unsat") or line.startswith("unknown"):
+                res[6] = line
+            if line.replace(" ", "").startswith(":solver-time"):
+                res[5] = line.split('e')[2].replace(
+                " ", "").replace("\t", "").replace("\n", "")
+        if res[5] is None:
+            res[5] = 0.0
+        if res[6] is None:
+            res[6] = "unknown"
     else:
-        res.extend([0, 0, 0.0])
-        if (a[-2] == "timeout"):
-            res.append(a[-2])
-        else :
-            for line in a:
-                if line.replace(" ", "").startswith(":solver-time"):
-                    res.append(line.split('e')[2].replace(
-                " ", "").replace("\t", "").replace("\n", ""))
-        sat_result = a[0]
-        res.append(sat_result)
-   
+        res[2] = 0
+        res[3] = 0
+        res[4] = 0.0
+        for line in a:
+            if line.startswith("ASSERTION VIOLATION"):
+                return None
+            if line.startswith("timeout"):
+                res[5] = line
+            if line.startswith("sat") or line.startswith("unsat") or line.startswith("unknown"):
+                res[6] = line
+            if line.replace(" ", "").startswith(":solver-time"):
+                res[5] = line.split('e')[2].replace(
+                " ", "").replace("\t", "").replace("\n", "")
+        if res[5] is None:
+            res[5] = 0.0
+        if res[6] is None:
+            res[6] = "unknown"
     return res
 
 
@@ -79,41 +111,32 @@ def run_test_for_z3(use_aig_rewrite=True):
     root, dirs, files = os.walk(TESTSPATH).__next__()
     for dir in dirs:  # Run each benchmark
         test_files = []
-        # if dir == "seahorn":
-        #     continue
+        if dir == "seahorn":
+            continue
         for root, dirs, files in os.walk(TESTSPATH+'/'+dir):
             for test in files:
                 if (test.endswith(".smt2")):
                     test_files.append((os.path.join(root, test), test))
+        cmd_lst = []
         for test_file, file_name in test_files:  # Run each test
             command_lst = [
                 f'{z3_bin} tactic.use_abc_tactic={use_aig} -st -T:{args.timeout} {test_file}']
-            print(command_lst[0])
             cddir = ""
             for strcmd in command_lst:
                 cddir += strcmd
-            process = subprocess.Popen(
-                '/bin/bash',
-                stdin=subprocess.PIPE,
-                stdout=get_output_level())
-            try:
-                output, err = process.communicate(cddir.encode())
-            except:
-                process.kill()
+            cmd_lst.append(cddir)
+        results = multi_thread(cmd_lst)
+        for output, err in results:
+            if err:
                 continue
-            finally:
-                if err or process.returncode != 0:
-                    process.kill()
-                    continue
-                res = collect_res(output.decode(), str(
-                    dir), str(file_name), use_aig_rewrite)
-                # i += 1
-                res_data.append(res)
-                # if (i > 10):
-                #     break
-            # break
+            res = collect_res(output.decode(), str(dir), str(file_name), use_aig_rewrite)
+            res_data.append(res)
+    if use_aig_rewrite:
+        base = ""
+    else:
+        base = "_base"
     write_data_into_csv(
-        "{dir}/{file}".format(dir=DATAABSPATH, file='z3.csv'), res_data)
+        "{dir}/{file}".format(dir=DATAABSPATH, file=f'z3{base}-to{args.timeout}.csv'), res_data)
 
 
 def main():
@@ -132,7 +155,7 @@ if __name__ == "__main__":
         description='Present flags.')
     parser.add_argument('--base', action='store_true', default=False)
     parser.add_argument('--debug', action='store_true', default=False)
-    parser.add_argument('--timeout', type=int, default=10,
+    parser.add_argument('--timeout', type=int, default=80,
                         help='Seconds before timeout for each test')
     args, extra = parser.parse_known_args()
     main()
