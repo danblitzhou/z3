@@ -229,15 +229,25 @@ class expr2aig {
     return m_cache[e];
   }
 
+  std::string g_ast_decl_kind_names[10] = { "true", "false", "=", 
+      "distinct", "ite", "and", "or", "xor", "not", "=>" };
+
   // void mk_frame(app *t) {
   //   m_frame_stack.push_back(frame(t, m_result_stack.size()));
   // }
+
+  std::string get_ast_decl_kind_name(decl_kind k) {
+    // OP_TRUE, OP_FALSE, OP_EQ, OP_DISTINCT, OP_ITE, OP_AND, OP_OR, OP_XOR, OP_NOT, OP_IMPLIES
+    if (k > 9)
+      return std::to_string(k);
+    return g_ast_decl_kind_names[k];
+  }
 public:
   expr2aig(imp &_m) : m(_m) {}
   ~expr2aig() {}
 
   abc_ref make_var(expr *const var, abc::Abc_Ntk_t *ntk) {
-    TRACE("abc", m.m_printer->display(tout << "abc: make var: ", var);
+    TRACE("expr2aig", m.m_printer->display(tout << "make var: ", var);
           tout << "\n";);
     // need to know whether var is input and output
     abc_lit r = abc_lit(m.man_abc);
@@ -291,14 +301,84 @@ public:
                     Abc_AigOr(m.getAigManager(ntk), tmp_not, r2.get_ref()));
   }
 
+  abc_ref _mk_single_binop_aig(decl_kind op, abc_ref const &r1, abc_ref const &r2,
+                     abc::Abc_Ntk_t *ntk) {
+    switch (op)
+    {
+    case OP_AND: {
+      abc_ref res = mk_and(r1, r2, ntk);
+      return res;
+      break;
+    }
+    case OP_OR: {
+      abc_ref res = mk_or(r1, r2, ntk);
+      return res;
+      break;
+    }
+    case OP_XOR: {
+      abc_ref res = mk_xor(r1, r2, ntk);
+      return res;
+      break;
+    }
+    default: {
+      TRACE("expr2aig", tout << "recursive defined binop not supported:" <<
+        get_ast_decl_kind_name(op) << "\n");
+      SASSERT(0);
+      break;
+    }
+    }
+  }
+
+  abc_ref _mk_binop_aig(app* expr, abc::Abc_Ntk_t *ntk) {
+    svector<abc_ref> res;
+    for (unsigned i = 0; i < expr->get_num_args(); ++i) {
+      abc_ref tmp = _mk_aig(expr->get_arg(i), ntk);
+      res.push_back(tmp);
+    }
+    abc_ref recur;
+    for (int i = expr->get_num_args() - 2; i >= 0; --i) {
+      if (i == (int) expr->get_num_args() - 2) {
+        recur = _mk_single_binop_aig(expr->get_decl_kind(), 
+            res[i], res[i + 1], ntk);
+      }
+      else {
+        recur = _mk_single_binop_aig(expr->get_decl_kind(), 
+            res[i], recur, ntk);
+      }
+    }
+    return recur;
+  }
+
+  // expr *convert_to_bin_op(app *expr) {
+  //   app* res = nullptr;
+  //   TRACE("expr2aig", m.m_printer->display(
+  //     tout << "origin expr: \n", expr); tout << "\n";);
+  //   TRACE("expr2aig", tout << "orgin expr: \n" << expr->get_num_args() << "\n";);
+  //   for (int i = expr->get_num_args() - 2; i >= 0; i--) {
+  //     TRACE("expr2aig", m.m_printer->display(
+  //     tout << "sub expr: \n", res); tout << "\n";);
+  //     if (res == nullptr) {
+  //       res = m.getMan().mk_app(m.getMan().get_basic_family_id(), 
+  //         expr->get_decl_kind(), expr->get_arg(i), expr->get_arg(i+1));
+  //     }
+  //     else {
+  //       res = m.getMan().mk_app(m.getMan().get_basic_family_id(), 
+  //         expr->get_decl_kind(), expr->get_arg(i), res);
+  //     }
+  //   }
+  //   TRACE("expr2aig", m.m_printer->display(
+  //     tout << "converted expr: \n", res); tout << "\n";);
+  //   return res;
+  // }
+
   abc_ref _mk_aig(expr *e, abc::Abc_Ntk_t *ntk) {
-    TRACE("aig", m.m_printer->display(tout << "aig: \n", e); tout << "\n";);
-    TRACE("aig",
+    TRACE("expr2aig", m.m_printer->display(tout << "expr: \n", e); tout << "\n";);
+    TRACE("expr2aig",
           tout << "expr kind: " << get_ast_kind_name(e->get_kind()) << "\n";);
     // m.print_ntk_stats(ntk);
     if (is_app(e)) { // either app or var
       app *tapp = to_app(e);
-      TRACE("aig", tout << "app decl kind: " << tapp->get_decl_kind() << "\n";);
+      TRACE("expr2aig", tout << "app decl kind: " << get_ast_decl_kind_name(tapp->get_decl_kind()) << "\n";);
       if (tapp->get_family_id() == m.getMan().get_basic_family_id()) {
         if (tapp->get_decl_kind() == OP_TRUE) {
           if (!is_cached(tapp)) {
@@ -316,7 +396,7 @@ public:
             return get_cache_result(tapp);
         } else {
           if (tapp->get_ref_count() > 1 && is_cached(tapp)) {
-            TRACE("abc", tout << "abc: binop is cached\n");
+            TRACE("expr2aig", tout << "expr: binop is cached\n");
             return get_cache_result(tapp);
           } else if (tapp->get_decl_kind() == OP_EQ) { // iff
             if (m.getMan().is_bool(tapp->get_arg(0))) {
@@ -334,24 +414,18 @@ public:
             cache_result(tapp, res);
             return res;
           } else if (tapp->get_decl_kind() == OP_OR) {
-            SASSERT(tapp->get_num_args() == 2);
-            abc_ref r1 = _mk_aig(tapp->get_arg(0), ntk);
-            abc_ref r2 = _mk_aig(tapp->get_arg(1), ntk);
-            abc_ref res = mk_or(r1, r2, ntk);
+            SASSERT(tapp->get_num_args() >= 2);
+            abc_ref res = _mk_binop_aig(tapp, ntk);
             cache_result(tapp, res);
             return res;
           } else if (tapp->get_decl_kind() == OP_AND) {
-            SASSERT(tapp->get_num_args() == 2);
-            abc_ref r1 = _mk_aig(tapp->get_arg(0), ntk);
-            abc_ref r2 = _mk_aig(tapp->get_arg(1), ntk);
-            abc_ref res = mk_and(r1, r2, ntk);
+            SASSERT(tapp->get_num_args() >= 2);
+            abc_ref res = _mk_binop_aig(tapp, ntk);
             cache_result(tapp, res);
             return res;
           } else if (tapp->get_decl_kind() == OP_XOR) {
-            SASSERT(tapp->get_num_args() == 2);
-            abc_ref r1 = _mk_aig(tapp->get_arg(0), ntk);
-            abc_ref r2 = _mk_aig(tapp->get_arg(1), ntk);
-            abc_ref res = mk_xor(r1, r2, ntk);
+            SASSERT(tapp->get_num_args() >= 2);
+            abc_ref res = _mk_binop_aig(tapp, ntk);
             cache_result(tapp, res);
             return res;
           } else if (tapp->get_decl_kind() == OP_IMPLIES) {
@@ -374,7 +448,7 @@ public:
       }
       // other ops are handled as aig pi nodes
       if (is_cached(tapp)) {
-        TRACE("abc", tout << "abc: var is cached\n");
+        TRACE("expr2aig", tout << "expr2aig: var is cached\n");
         return get_cache_result(tapp);
       }
       abc_ref res = make_var(tapp, ntk);
@@ -383,7 +457,7 @@ public:
     } else {
       // quantifiers and free variables are handled as aig pi nodes
       if (is_cached(e)) {
-        TRACE("abc", tout << "abc: var is cached\n");
+        TRACE("expr2aig", tout << "expr2aig: var is cached\n");
         return get_cache_result(e);
       }
       abc_ref res = make_var(e, ntk);
@@ -394,7 +468,6 @@ public:
   }
 
   abc_ref mk_aig(expr *e, abc::Abc_Ntk_t *ntk) {
-    TRACE("expr", m.m_printer->display(tout << "mk_aig: \n", e); tout << "\n";);
     return _mk_aig(e, ntk);
   }
 
@@ -546,8 +619,8 @@ public:
 
   bool is_or(Abc_Obj_t *obj, Abc_Obj_t **a, Abc_Obj_t **b) {
     // a or b == not (not a and not b)
-    TRACE("debug", tout << Abc_ObjIsComplement(obj) << "\n";);
-    TRACE("debug", tout << Abc_ObjFaninNum(obj) << "\n";);
+    TRACE("aig2expr", tout << Abc_ObjIsComplement(obj) << "\n";);
+    TRACE("aig2expr", tout << Abc_ObjFaninNum(obj) << "\n";);
     if (is_var(obj))
       return false;
     if (Abc_ObjFaninNum(obj) < 2) {
@@ -565,11 +638,11 @@ public:
 
   inline __attribute__((always_inline)) void trace_expr(expr *e) {
     // { AST_APP, AST_VAR, AST_QUANTIFIER, AST_SORT, AST_FUNC_DECL } ast_kind
-    TRACE("debug", tout << mk_ismt2_pp(e, m.getMan(), 2) << "\t" << e->get_kind() << "\n";);
+    TRACE("aig2expr", tout << mk_ismt2_pp(e, m.getMan(), 2) << "\t" << e->get_kind() << "\n";);
   }
 
   inline void trace_node(Abc_Obj_t *obj) {
-    TRACE("debug", tout << "node" << obj << "\tiscompl: " <<Abc_ObjIsComplement(obj)
+    TRACE("aig2expr", tout << "node" << obj << "\tiscompl: " <<Abc_ObjIsComplement(obj)
         << "\tfanin: " << Abc_ObjFaninNum(obj) << "\n";);
   }
 
