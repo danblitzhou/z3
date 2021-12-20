@@ -5,7 +5,7 @@ import glob
 import subprocess
 import argparse
 
-BUILDABSPATH = os.path.abspath('../build/')
+BUILDABSPATH = os.path.abspath('../debug/')
 OUTPUTPATH = os.path.abspath('../out/')
 DATAABSPATH = os.path.abspath('../') + "/data"
 TESTSPATH = os.path.abspath('../tests/')
@@ -42,18 +42,24 @@ def collect_res(plain_data, bench_name, name, use_aig_rewrite):
         aig_time = a[3]
         res.append(aig_time.split(':')[1].replace(
             " ", "").replace("\t", "").replace("\n", "")[:-3])
-        # FIXME: The time collected by z3 does not belong to solver time
-        solver_time = a[-3]
-        res.append(solver_time.split('e')[1].replace(
-            " ", "").replace("\t", "").replace("\n", ""))
+        if (a[-2] == "timeout"):
+            res.append(a[-2])
+        else :
+            for line in a:
+                if line.replace(" ", "").startswith(":solver-time"):
+                    res.append(line.split('e')[2].replace(
+                " ", "").replace("\t", "").replace("\n", ""))
         sat_result = a[4]
         res.append(sat_result)
     else:
         res.extend([0, 0, 0.0])
-        solver_time = a[-2]
-        print(solver_time)
-        res.append(solver_time.split('e')[1].replace(
-            " ", "").replace("\t", "").replace("\n", "").replace(")",""))
+        if (a[-2] == "timeout"):
+            res.append(a[-2])
+        else :
+            for line in a:
+                if line.replace(" ", "").startswith(":solver-time"):
+                    res.append(line.split('e')[2].replace(
+                " ", "").replace("\t", "").replace("\n", ""))
         sat_result = a[0]
         res.append(sat_result)
    
@@ -62,23 +68,27 @@ def collect_res(plain_data, bench_name, name, use_aig_rewrite):
 
 def run_test_for_z3(use_aig_rewrite=True):
     z3_bin = BUILDABSPATH + '/z3'
+    i = 0
     print(f'Bin directory: {z3_bin}')
     if use_aig_rewrite:
         use_aig = "true"
     else:
         use_aig = "false"
     print("Start making Z3 results...")
-    root, dirs, files = os.walk(TESTSPATH).__next__()
     res_data = []
+    root, dirs, files = os.walk(TESTSPATH).__next__()
     for dir in dirs:  # Run each benchmark
         test_files = []
+        # if dir == "seahorn":
+        #     continue
         for root, dirs, files in os.walk(TESTSPATH+'/'+dir):
             for test in files:
-                test_files.append((os.path.join(root, test), test))
+                if (test.endswith(".smt2")):
+                    test_files.append((os.path.join(root, test), test))
         for test_file, file_name in test_files:  # Run each test
             command_lst = [
-                f'{z3_bin} tactic.use_abc_tactic={use_aig} -st {test_file}']
-            print(command_lst)
+                f'{z3_bin} tactic.use_abc_tactic={use_aig} -st -T:{args.timeout} {test_file}']
+            print(command_lst[0])
             cddir = ""
             for strcmd in command_lst:
                 cddir += strcmd
@@ -86,12 +96,21 @@ def run_test_for_z3(use_aig_rewrite=True):
                 '/bin/bash',
                 stdin=subprocess.PIPE,
                 stdout=get_output_level())
-            output, err = process.communicate(cddir.encode())
-            if err:
+            try:
+                output, err = process.communicate(cddir.encode())
+            except:
+                process.kill()
                 continue
-            res = collect_res(output.decode(), str(
-                dir), str(file_name), use_aig_rewrite)
-            res_data.append(res)
+            finally:
+                if err or process.returncode != 0:
+                    process.kill()
+                    continue
+                res = collect_res(output.decode(), str(
+                    dir), str(file_name), use_aig_rewrite)
+                # i += 1
+                res_data.append(res)
+                # if (i > 10):
+                #     break
             # break
     write_data_into_csv(
         "{dir}/{file}".format(dir=DATAABSPATH, file='z3.csv'), res_data)
@@ -113,7 +132,7 @@ if __name__ == "__main__":
         description='Present flags.')
     parser.add_argument('--base', action='store_true', default=False)
     parser.add_argument('--debug', action='store_true', default=False)
-    parser.add_argument('--timeout', type=int, default=2000,
+    parser.add_argument('--timeout', type=int, default=10,
                         help='Seconds before timeout for each test')
     args, extra = parser.parse_known_args()
     main()

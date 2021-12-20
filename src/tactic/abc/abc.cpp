@@ -825,9 +825,9 @@ abc_ref::abc_ref(abc_manager &m, abc_ref r) : m_manager(&m), m_ref(r.m_ref) {
 }
 
 abc_ref::~abc_ref() {
-  if (m_ref != nullptr) {
-    m_manager->m_imp->dec_ref(*this);
-  }
+  // if (m_ref != nullptr) {
+  //   m_manager->m_imp->dec_ref(*this);
+  // }
 }
 
 abc_manager::abc_manager(ast_manager &m) {
@@ -886,6 +886,7 @@ abc::Abc_Ntk_t *abc_manager::to_abc(goal_ref const &g) {
       abc_ref ro = mk_po(ntk);
       abc_ref r = this->mk_aig(g->form(i), ntk);
       abc::Abc_ObjAddFanin(ro.get_ref(), r.get_ref());
+      // Abc_AigPrintNode(ro.get_ref());
     }
   }
   else {
