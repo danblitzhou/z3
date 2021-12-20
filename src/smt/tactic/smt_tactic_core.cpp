@@ -149,6 +149,8 @@ public:
 
     void operator()(goal_ref const & in,
                     goal_ref_buffer & result) override {
+        stopwatch sw;
+        sw.start();
         try {
             IF_VERBOSE(10, verbose_stream() << "(smt.tactic start)\n";);
             ast_manager & m = in->m();
@@ -208,6 +210,8 @@ public:
                 throw;
             }
             SASSERT(m_ctx);
+            sw.stop();
+            m_stats.update("solver time", sw.get_seconds());
             m_ctx->collect_statistics(m_stats);
             proof_ref pr(m_ctx->get_proof(), m);
             TRACE("smt_tactic", tout << r << " " << pr << "\n";);

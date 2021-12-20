@@ -212,9 +212,13 @@ public:
     void operator()(goal_ref const & g, 
                     goal_ref_buffer & result) override {
         imp proc(g->m(), m_params);
+        stopwatch sw;
+        sw.start();
         scoped_set_imp set(this, &proc);
         try {
             proc(g, result);
+            sw.stop();
+            m_stats.update("solver time", sw.get_seconds());
             proc.m_solver->collect_statistics(m_stats);
         }
         catch (sat::solver_exception & ex) {
