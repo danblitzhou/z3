@@ -26,10 +26,12 @@ Notes:
 #include "tactic/bv/max_bv_sharing_tactic.h"
 #include "tactic/bv/bv_size_reduction_tactic.h"
 #include "tactic/aig/aig_tactic.h"
+#include "tactic/abc/abc_tactic.h"
 #include "sat/tactic/sat_tactic.h"
 #include "sat/sat_solver/inc_sat_solver.h"
 #include "ackermannization/ackermannize_bv_tactic.h"
 #include "tactic/smtlogics/smt_tactic.h"
+#include "tactic/tactic_params.hpp"
 
 #define MEMLIMIT 300
 
@@ -93,6 +95,13 @@ static tactic * mk_qfbv_tactic(ast_manager& m, params_ref const & p, tactic* sat
     params_ref big_aig_p;
     big_aig_p.set_bool("aig_per_assertion", false);
 
+    params_ref big_abc_aig_p;
+    big_abc_aig_p.set_bool("abc_per_assertion", false);
+
+    tactic_params tp;
+    bool use_abc = tp.use_abc_tactic();
+    tactic * t = use_abc ? using_params(mk_abc_tactic(), big_abc_aig_p) : using_params(mk_aig_tactic(), big_aig_p);
+
     tactic* preamble_st = mk_qfbv_preamble(m, p);
     tactic * st = main_p(and_then(preamble_st,
                                   // If the user sets HI_DIV0=false, then the formula may contain uninterpreted function
@@ -108,9 +117,7 @@ static tactic * mk_qfbv_tactic(ast_manager& m, params_ref const & p, tactic* sat
                                                                                          mk_solve_eqs_tactic(m)),
                                                                                 local_ctx_p),
                                                                    if_no_proofs(cond(mk_produce_unsat_cores_probe(),
-                                                                                     mk_aig_tactic(),
-                                                                                     using_params(mk_aig_tactic(),
-                                                                                                  big_aig_p))))),
+                                                                                     mk_aig_tactic(),t)))),
                                                      sat),
                                             smt))));
 

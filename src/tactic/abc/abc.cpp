@@ -945,6 +945,7 @@ void abc_manager::abc_exec(goal_ref const &g, const char *cmd) {
   m_imp->m_gate_num = ntk->nObjs;
   run_abc(cmd);
   TRACE("abc", tout << "abc: rewriting complete... \n");
+  m_imp->print_ntk_stats(ntk);
   m_imp->print_expr_res(std::cout, ntk);
   m_imp->update_rev_abc_map(ntk);
   // convert abc aig to expr *
